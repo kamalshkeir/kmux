@@ -28,14 +28,14 @@ func (c *Conn) WriteJSON(v interface{}) error {
 		
 		return err
 	}
-	mu.RLock()
+	mu.Lock()
 	err1 := json.NewEncoder(w).Encode(v)
 	err2 := w.Close()
 	if err1 != nil {
-		mu.RUnlock()
+		mu.Unlock()
 		return err1
 	}
-	mu.RUnlock()
+	mu.Unlock()
 	return err2
 }
 

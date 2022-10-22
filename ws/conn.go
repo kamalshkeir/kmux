@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"math/rand"
 	"net"
@@ -613,14 +614,14 @@ func (w *messageWriter) flushFrame(final bool, extra []byte) error {
 	// documentation for more info.
 
 	if c.isWriting {
-		panic("concurrent write to websocket connection")
+		fmt.Println("concurrent write to websocket connection")
 	}
 	c.isWriting = true
 
 	err := c.write(w.frameType, c.writeDeadline, c.writeBuf[framePos:w.pos], extra)
 
 	if !c.isWriting {
-		panic("concurrent write to websocket connection")
+		fmt.Println("concurrent write to websocket connection")
 	}
 	c.isWriting = false
 
@@ -727,7 +728,11 @@ func (w *messageWriter) Close() error {
 	if w.err != nil {
 		return w.err
 	}
-	return w.flushFrame(true, nil)
+	err := w.flushFrame(true, nil)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // WritePreparedMessage writes prepared message into connection.
