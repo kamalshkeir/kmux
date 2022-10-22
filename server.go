@@ -240,6 +240,7 @@ func handleWebsockets(c *Context, rt Route) {
 		// }).ServeHTTP(c.ResponseWriter, c.Request)
 		return
 	} else {
+		fmt.Println("cross")
 		// cross
 		if len(rt.AllowedOrigines) == 0 {
 			c.Status(http.StatusBadRequest).Text("you are not allowed cross origin")
@@ -279,6 +280,7 @@ func handleWebsockets(c *Context, rt Route) {
 				// }).ServeHTTP(c.ResponseWriter, c.Request)
 				return
 			} else {
+				klog.Printfs("rd cross origin:",c.Request.Header.Get("Origin"),c.Request.RemoteAddr)
 				c.Status(http.StatusBadRequest).Text("you are not allowed to access this route from cross origin")
 				return
 			}
