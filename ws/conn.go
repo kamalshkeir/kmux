@@ -755,8 +755,8 @@ func (c *Conn) WritePreparedMessage(pm *PreparedMessage) error {
 // WriteMessage is a helper method for getting a writer using NextWriter,
 // writing the message and closing the writer.
 func (c *Conn) WriteMessage(messageType int, data []byte) error {
-	mu.Lock()
-	defer mu.Unlock()
+	<-c.mu
+	defer func() { c.mu <- struct{}{} }()
 	if c.isServer && (c.newCompressionWriter == nil || !c.enableWriteCompression) {
 		// Fast path with no allocations and single frame.
 
@@ -1089,8 +1089,6 @@ func (r *messageReader) Close() error {
 // ReadMessage is a helper method for getting a reader using NextReader and
 // reading from that reader to a buffer.
 func (c *Conn) ReadMessage() (messageType int, p []byte, err error) {
-	mu.Lock()
-	defer mu.Unlock()
 	var r io.Reader
 	messageType, r, err = c.NextReader()
 	if err != nil {
