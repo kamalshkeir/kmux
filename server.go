@@ -211,7 +211,7 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 
 func handleWebsockets(c *Context, rt Route) {
-	if checkSameSite(*c) || strings.Contains(c.Request.RemoteAddr,"localhost") {
+	if checkSameSite(*c) || StringContains(c.Request.RemoteAddr,"localhost","127.0.0.1") {
 		conn,err := ws.DefaultUpgraderKMUX.Upgrade(c.ResponseWriter,c.Request,nil)
 		if klog.CheckError(err) {
 			return
