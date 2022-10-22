@@ -82,14 +82,18 @@ func (router *Router) RunTLS(addr, cert, certKey string) {
 		}
 	}
 	// graceful Shutdown server 
-	go router.gracefulShutdown()
 	router.initServer(ADDRESS)
+	
+	go func() {
+		if err := router.Server.ListenAndServeTLS(cert,certKey); err != http.ErrServerClosed {
+			klog.Printf("rdUnable to shutdown the server : %v\n", err)
+		} else {
+			klog.Printfs("grServer Off!\n")
+		}
+	}()
+
 	klog.Printfs("Running on https://"+ADDRESS)
-	if err := router.Server.ListenAndServe(); err != http.ErrServerClosed {
-		klog.Printf("rdUnable to shutdown the server : %v \n", err)
-	} else {
-		klog.Printf("grServer Off ! \n")
-	}	
+	router.gracefulShutdown()
 }
 
 // RunAutoTLS HTTPS server generate certificates and handle renew 
@@ -122,14 +126,18 @@ func (router *Router) RunAutoTLS(domainName string, subDomains ...string) {
 		SUBDOMAINS=subDomains
 	}
 	// graceful Shutdown server 
-	go router.gracefulShutdown()
+	
 	router.createServerCerts(DOMAIN,SUBDOMAINS...)
+	go func() {
+		if err := router.Server.ListenAndServe(); err != http.ErrServerClosed {
+			klog.Printf("rdUnable to shutdown the server : %v\n", err)
+		} else {
+			klog.Printf("grServer Off !\n")
+		}	
+	}()
+	
 	klog.Printfs("Running on https://"+ADDRESS)
-	if err := router.Server.ListenAndServe(); err != http.ErrServerClosed {
-		klog.Printf("rdUnable to shutdown the server : %v\n", err)
-	} else {
-		klog.Printf("grServer Off !\n")
-	}	
+	router.gracefulShutdown()
 }
 
 
