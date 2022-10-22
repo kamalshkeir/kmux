@@ -516,12 +516,9 @@ func (c *Conn) beginMessage(mw *messageWriter, messageType int) error {
 // PongMessage) are supported.
 func (c *Conn) NextWriter(messageType int) (io.WriteCloser, error) {
 	var mw messageWriter
-	messageWriterMU.Lock()
 	if err := c.beginMessage(&mw, messageType); err != nil {
-		messageWriterMU.Unlock()
 		return nil, err
 	}
-	messageWriterMU.Unlock()
 	c.writer = &mw
 	if c.newCompressionWriter != nil && c.enableWriteCompression && isData(messageType) {
 		w := c.newCompressionWriter(c.writer, c.compressionLevel)
