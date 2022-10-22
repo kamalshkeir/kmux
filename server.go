@@ -211,7 +211,7 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 
 func handleWebsockets(c *Context, rt Route) {
-	if checkSameSite(*c) {
+	if checkSameSite(*c) || strings.Contains(c.Request.RemoteAddr,"localhost") {
 		conn,err := ws.DefaultUpgraderKMUX.Upgrade(c.ResponseWriter,c.Request,nil)
 		if klog.CheckError(err) {
 			return
@@ -240,7 +240,7 @@ func handleWebsockets(c *Context, rt Route) {
 		// }).ServeHTTP(c.ResponseWriter, c.Request)
 		return
 	} else {
-		klog.Printfs("rd cross origin:",c.Request.Header.Get("Origin"),c.Request.RemoteAddr)
+		klog.Printfs("rdcross origin: %s, remote_addr: %s\n",c.Request.Header.Get("Origin"),c.Request.RemoteAddr)
 		// cross
 		if len(rt.AllowedOrigines) == 0 {
 			c.Status(http.StatusBadRequest).Text("you are not allowed cross origin")
