@@ -760,6 +760,17 @@ func (c *Conn) WritePreparedMessage(pm *PreparedMessage) error {
 // WriteMessage is a helper method for getting a writer using NextWriter,
 // writing the message and closing the writer.
 func (c *Conn) WriteMessage(messageType int, data []byte) error {
+	kamMutex.Lock()
+	err := c.writeMessage(messageType,data)
+	if err != nil {
+		kamMutex.Unlock()
+		return err
+	}
+	kamMutex.Unlock()
+	return nil
+}
+
+func (c *Conn) writeMessage(messageType int, data []byte) error {
 	if c.isServer && (c.newCompressionWriter == nil || !c.enableWriteCompression) {
 		// Fast path with no allocations and single frame.
 
