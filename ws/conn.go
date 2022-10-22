@@ -723,19 +723,15 @@ func (w *messageWriter) ReadFrom(r io.Reader) (nn int64, err error) {
 	return nn, err
 }
 
-var messageWriterMU sync.Mutex
+
 func (w *messageWriter) Close() error {
-	messageWriterMU.Lock()
 	if w.err != nil {
-		messageWriterMU.Unlock()
 		return w.err
 	}
 	err := w.flushFrame(true, nil)
 	if err != nil {
-		messageWriterMU.Unlock()
 		return err
 	}
-	messageWriterMU.Unlock()
 	return nil
 }
 
