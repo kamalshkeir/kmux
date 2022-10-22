@@ -205,19 +205,14 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 
-var upgrader = ws.Upgrader{
-	EnableCompression: true,
-    ReadBufferSize:  1024,
-    WriteBufferSize: 1024,
-	HandshakeTimeout: 5*time.Second,
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
-}
+
+
+
+
 
 func handleWebsockets(c *Context, rt Route) {
 	if checkSameSite(*c) {
-		conn,err := upgrader.Upgrade(c.ResponseWriter,c.Request,nil)
+		conn,err := ws.DefaultUpgraderKMUX.Upgrade(c.ResponseWriter,c.Request,nil)
 		if klog.CheckError(err) {
 			return
 		}
@@ -257,7 +252,7 @@ func handleWebsockets(c *Context, rt Route) {
 				}
 			}
 			if allowed {
-				conn,err := upgrader.Upgrade(c.ResponseWriter,c.Request,nil)
+				conn,err := ws.DefaultUpgraderKMUX.Upgrade(c.ResponseWriter,c.Request,nil)
 				if klog.CheckError(err) {
 					return
 				}
