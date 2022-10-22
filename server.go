@@ -379,7 +379,6 @@ func (router *Router) initAutoServer(addr string, tlsconf *tls.Config) {
 func (router *Router) gracefulShutdown() {
 	err := GracefulShutdown(func() error {
 		// Shutdown server
-		router.Server.SetKeepAlivesEnabled(false)
 		err := router.Server.Shutdown(context.Background())
 		if klog.CheckError(err) {
 			return err
