@@ -193,6 +193,7 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 
 var upgrader = ws.Upgrader{
+	EnableCompression: true,
     ReadBufferSize:  1024,
     WriteBufferSize: 1024,
 	HandshakeTimeout: 5*time.Second,

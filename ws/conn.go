@@ -723,11 +723,19 @@ func (w *messageWriter) ReadFrom(r io.Reader) (nn int64, err error) {
 	return nn, err
 }
 
+var kmuu sync.Mutex
 func (w *messageWriter) Close() error {
 	if w.err != nil {
 		return w.err
 	}
-	return w.flushFrame(true, nil)
+	kmuu.Lock()
+	err := w.flushFrame(true, nil)
+	if err != nil {
+		kmuu.Unlock()
+		return err
+	}
+	kmuu.Unlock()
+	return nil
 }
 
 // WritePreparedMessage writes prepared message into connection.
