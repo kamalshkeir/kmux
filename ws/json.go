@@ -37,10 +37,8 @@ func (c *Conn) WriteJSON(v interface{}) error {
 	
 	err2 := w.Close()
 	if err2 != nil {
-		messageWriterMU.Unlock()
 		return err2
 	}
-	messageWriterMU.Unlock()
 	return nil
 }
 
