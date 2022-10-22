@@ -34,7 +34,7 @@ func (c *Conn) WriteJSON(v interface{}) error {
 		messageWriterMU.Unlock()
 		return err1
 	}
-	messageWriterMU.Lock()
+	messageWriterMU.Unlock()
 	err2 := w.Close()
 	if err2 != nil {
 		return err2
