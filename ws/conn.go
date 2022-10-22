@@ -515,6 +515,8 @@ func (c *Conn) beginMessage(mw *messageWriter, messageType int) error {
 // All message types (TextMessage, BinaryMessage, CloseMessage, PingMessage and
 // PongMessage) are supported.
 func (c *Conn) NextWriter(messageType int) (io.WriteCloser, error) {
+	messageWriterMU.Lock()
+	defer messageWriterMU.Unlock()
 	var mw messageWriter
 	if err := c.beginMessage(&mw, messageType); err != nil {
 		return nil, err
@@ -725,13 +727,17 @@ func (w *messageWriter) ReadFrom(r io.Reader) (nn int64, err error) {
 
 var messageWriterMU sync.Mutex
 func (w *messageWriter) Close() error {
+	messageWriterMU.Lock()
 	if w.err != nil {
+		messageWriterMU.Unlock()
 		return w.err
 	}
 	err := w.flushFrame(true, nil)
 	if err != nil {
+		messageWriterMU.Unlock()
 		return err
 	}
+	messageWriterMU.Unlock()
 	return nil
 }
 
