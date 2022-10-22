@@ -723,8 +723,10 @@ func (w *messageWriter) ReadFrom(r io.Reader) (nn int64, err error) {
 	return nn, err
 }
 
-
+var kmuu sync.Mutex
 func (w *messageWriter) Close() error {
+	kmuu.Lock()
+	defer kmuu.Unlock()
 	if w.err != nil {
 		return w.err
 	}

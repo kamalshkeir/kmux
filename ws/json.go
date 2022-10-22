@@ -7,7 +7,6 @@ package ws
 import (
 	"encoding/json"
 	"io"
-	"sync"
 )
 
 // WriteJSON writes the JSON encoding of v as a message.
@@ -19,7 +18,7 @@ func WriteJSON(c *Conn, v interface{}) error {
 
 
 
-var kmuu sync.Mutex
+
 // WriteJSON writes the JSON encoding of v as a message.
 //
 // See the documentation for encoding/json Marshal for details about the
@@ -29,20 +28,16 @@ func (c *Conn) WriteJSON(v interface{}) error {
 	if err != nil {			
 		return err
 	}
-	kmuu.Lock()
+	
 	err1 := json.NewEncoder(w).Encode(v)
 	if err1 != nil {
-		kmuu.Unlock()
 		return err1
 	}
-	
 	err2 := w.Close()
 	if err2 != nil {
-		kmuu.Unlock()
 		return err2
 	}
-	kmuu.Unlock()
-	return err2
+	return nil
 }
 
 // ReadJSON reads the next JSON-encoded message from the connection and stores
