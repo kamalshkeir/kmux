@@ -7,6 +7,7 @@ package ws
 import (
 	"encoding/json"
 	"io"
+	"sync"
 )
 
 // WriteJSON writes the JSON encoding of v as a message.
@@ -18,12 +19,23 @@ func WriteJSON(c *Conn, v interface{}) error {
 
 
 
-
+var kamMutex sync.Mutex 
 // WriteJSON writes the JSON encoding of v as a message.
 //
 // See the documentation for encoding/json Marshal for details about the
 // conversion of Go values to JSON.
 func (c *Conn) WriteJSON(v interface{}) error {
+	kamMutex.Lock()
+	err := c.writeJSON(v)
+	if err != nil {
+		kamMutex.Unlock()
+		return err
+	}
+	kamMutex.Unlock()
+	return nil
+}
+
+func (c *Conn) writeJSON(v interface{}) error {
 	w, err := c.NextWriter(TextMessage)
 	if err != nil {			
 		return err
