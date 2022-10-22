@@ -46,17 +46,22 @@ func (router *Router) Run(addr string) {
 			return
 		}
 	}
+	
+	router.initServer(ADDRESS)
+	
+	// Listen and serve
+	go func() {
+		if err := router.Server.ListenAndServe(); err != http.ErrServerClosed {
+			klog.Printf("rdUnable to shutdown the server : %v\n", err)
+		} else {
+			klog.Printfs("grServer Off!\n")
+		}
+	}()
 
 	// graceful Shutdown server
-	go router.gracefulShutdown()
-	router.initServer(ADDRESS)
-	// Listen and serve
 	klog.Printfs("Running on http://%s\n",ADDRESS)
-	if err := router.Server.ListenAndServe(); err != http.ErrServerClosed {
-		klog.Printf("rdUnable to shutdown the server : %v\n", err)
-	} else {
-		klog.Printfs("grServer Off!\n")
-	}
+	router.gracefulShutdown()
+	
 }
 
 // RunTLS HTTPS server using certificates
