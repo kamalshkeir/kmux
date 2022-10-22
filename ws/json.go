@@ -7,6 +7,7 @@ package ws
 import (
 	"encoding/json"
 	"io"
+	"sync"
 )
 
 // WriteJSON writes the JSON encoding of v as a message.
@@ -20,11 +21,12 @@ func WriteJSON(c *Conn, v interface{}) error {
 //
 // See the documentation for encoding/json Marshal for details about the
 // conversion of Go values to JSON.
+var mu sync.RWMutex
 func (c *Conn) WriteJSON(v interface{}) error {
-	<-c.mu
-	defer func() { c.mu <- struct{}{} }()
+	mu.RLock()
 	w, err := c.NextWriter(TextMessage)
 	if err != nil {		
+		mu.RUnlock()
 		return err
 	}
 	err1 := json.NewEncoder(w).Encode(v)
