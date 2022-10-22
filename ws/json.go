@@ -34,12 +34,11 @@ func (c *Conn) WriteJSON(v interface{}) error {
 		messageWriterMU.Unlock()
 		return err1
 	}
+	messageWriterMU.Lock()
 	err2 := w.Close()
 	if err2 != nil {
-		messageWriterMU.Lock()
 		return err2
 	}
-	messageWriterMU.Lock()
 	return nil
 }
 
