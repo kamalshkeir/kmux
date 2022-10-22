@@ -515,15 +515,15 @@ func (c *Conn) beginMessage(mw *messageWriter, messageType int) error {
 // All message types (TextMessage, BinaryMessage, CloseMessage, PingMessage and
 // PongMessage) are supported.
 func (c *Conn) NextWriter(messageType int) (io.WriteCloser, error) {
-	messageWriterMU.Lock()
-	defer messageWriterMU.Unlock()
 	var mw messageWriter
 	if err := c.beginMessage(&mw, messageType); err != nil {
 		return nil, err
 	}
 	c.writer = &mw
 	if c.newCompressionWriter != nil && c.enableWriteCompression && isData(messageType) {
+		messageWriterMU.Lock()
 		w := c.newCompressionWriter(c.writer, c.compressionLevel)
+		messageWriterMU.Unlock()
 		mw.compress = true
 		c.writer = w
 	}
