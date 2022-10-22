@@ -23,17 +23,19 @@ func WriteJSON(c *Conn, v interface{}) error {
 // conversion of Go values to JSON.
 var mu sync.RWMutex
 func (c *Conn) WriteJSON(v interface{}) error {
-	mu.RLock()
 	w, err := c.NextWriter(TextMessage)
 	if err != nil {		
-		mu.RUnlock()
+		
 		return err
 	}
+	mu.Lock()
 	err1 := json.NewEncoder(w).Encode(v)
 	err2 := w.Close()
 	if err1 != nil {
+		mu.Unlock()
 		return err1
 	}
+	mu.Unlock()
 	return err2
 }
 
