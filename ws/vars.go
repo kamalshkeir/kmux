@@ -5,12 +5,7 @@ import (
 	"time"
 )
 
-
-var FuncUpgraderOrigin = func(r *http.Request) bool {
-	return true
-}
-
-var FuncBeforeUpgrade = func(req *http.Request) bool {
+var FuncBeforeUpgradeWS = func(w http.ResponseWriter,r *http.Request) bool {
 	return true
 }
 
@@ -19,5 +14,7 @@ var DefaultUpgraderKMUX = Upgrader{
 	ReadBufferSize:    1024,
 	WriteBufferSize:   1024,
 	HandshakeTimeout:  10 * time.Second,
-	CheckOrigin: FuncUpgraderOrigin,
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
 }

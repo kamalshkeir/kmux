@@ -22,6 +22,9 @@ var (
 	WriteTimeout = 20 * time.Second
 	IdleTimeout  = 20 * time.Second
 	midwrs       []func(http.Handler) http.Handler
+	FuncCorsSameSite = func(c *Context, rt Route) bool {
+		return true
+	}
 )
 
 // UseMiddlewares chain global middlewares applied on the router
@@ -206,7 +209,7 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 
 func handleWebsockets(c *Context, rt Route) {
-	accept := ws.FuncBeforeUpgrade(c.Request)
+	accept := ws.FuncBeforeUpgradeWS(c.ResponseWriter,c.Request)
 	if !accept {
 		c.Status(http.StatusMethodNotAllowed).Json(map[string]any{
 			"error":"not allowed to access ws",
@@ -246,7 +249,7 @@ func handleHttp(c *Context, rt Route) {
 		return
 	default:
 		// check cross origin
-		if checkSameSite(*c) {
+		if checkSameSite(*c) || FuncCorsSameSite(c,rt) {
 			// same site
 			rt.Handler(c)
 			return
