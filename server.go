@@ -221,23 +221,11 @@ func handleWebsockets(c *Context, rt Route) {
 				Ws:     conn,
 				Params: make(map[string]string),
 				Route:  rt,
+				Request: c.Request,
 			}
 			rt.WsHandler(ctx)
 			return
 		}
-		// same site
-		// websocket.Handler(func(conn *websocket.Conn) {
-		// 	conn.MaxPayloadBytes = 10 << 20
-		// 	if conn.IsServerConn() {
-		// 		ctx := &WsContext{
-		// 			Ws:     conn,
-		// 			Params: make(map[string]string),
-		// 			Route:  rt,
-		// 		}
-		// 		rt.WsHandler(ctx)
-		// 		return
-		// 	}
-		// }).ServeHTTP(c.ResponseWriter, c.Request)
 		return
 	} else {
 		klog.Printfs("rdcross origin: %s, remote_addr: %s\n",c.Request.Header.Get("Origin"),c.Request.RemoteAddr)
@@ -262,22 +250,11 @@ func handleWebsockets(c *Context, rt Route) {
 						Ws:     conn,
 						Params: make(map[string]string),
 						Route:  rt,
+						Request: c.Request,
 					}
 					rt.WsHandler(ctx)
 					return
 				}
-				// websocket.Handler(func(conn *websocket.Conn) {
-				// 	conn.MaxPayloadBytes = 10 << 20
-				// 	if conn.IsServerConn() {
-				// 		ctx := &WsContext{
-				// 			Ws:     conn,
-				// 			Params: make(map[string]string),
-				// 			Route:  rt,
-				// 		}
-				// 		rt.WsHandler(ctx)
-				// 		return
-				// 	}
-				// }).ServeHTTP(c.ResponseWriter, c.Request)
 				return
 			} else {
 				c.Status(http.StatusBadRequest).Text("you are not allowed to access this route from cross origin")

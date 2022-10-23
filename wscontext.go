@@ -1,6 +1,7 @@
 package kmux
 
 import (
+	"net/http"
 	"sync"
 
 	"github.com/kamalshkeir/kmux/ws"
@@ -11,6 +12,7 @@ type WsContext struct {
 	Ws     *ws.Conn
 	Params map[string]string
 	Route
+	Request *http.Request
 }
 
 // ReceiveText receive text from ws and disconnect when stop receiving
