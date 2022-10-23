@@ -25,13 +25,10 @@ var kamMutex sync.Mutex
 // See the documentation for encoding/json Marshal for details about the
 // conversion of Go values to JSON.
 func (c *Conn) WriteJSON(v interface{}) error {
-	kamMutex.Lock()
 	err := c.writeJSON(v)
 	if err != nil {
-		kamMutex.Unlock()
 		return err
 	}
-	kamMutex.Unlock()
 	return nil
 }
 
@@ -40,11 +37,14 @@ func (c *Conn) writeJSON(v interface{}) error {
 	if err != nil {			
 		return err
 	}
+	
+	kamMutex.Lock()
 	err1 := json.NewEncoder(w).Encode(v)
-	if err1 != nil {
+	if err1 != nil {	
+		kamMutex.Unlock()
 		return err1
 	}
-	
+	kamMutex.Unlock()
 	err2 := w.Close()
 	if err2 != nil {
 		return err2
