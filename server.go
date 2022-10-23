@@ -205,62 +205,27 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 
-
-
-
-
-
 func handleWebsockets(c *Context, rt Route) {
-	if checkSameSite(*c) || StringContains(c.Request.RemoteAddr,"localhost","127.0.0.1") {
-		conn,err := ws.DefaultUpgraderKMUX.Upgrade(c.ResponseWriter,c.Request,nil)
-		if klog.CheckError(err) {
-			return
-		}
-		if conn != nil {
-			ctx := &WsContext{
-				Ws:     conn,
-				Params: make(map[string]string),
-				Route:  rt,
-				Request: c.Request,
-			}
-			rt.WsHandler(ctx)
-			return
-		}
+	accept := ws.FuncBeforeUpgrade(c.Request)
+	if !accept {
+		c.Status(http.StatusMethodNotAllowed).Json(map[string]any{
+			"error":"not allowed to access ws",
+		})
 		return
-	} else {
-		klog.Printfs("rdcross origin: %s, remote_addr: %s\n",c.Request.Header.Get("Origin"),c.Request.RemoteAddr)
-		// cross
-		if len(rt.AllowedOrigines) == 0 {
-			c.Status(http.StatusBadRequest).Text("you are not allowed cross origin")
-			return
-		} else {
-			allowed := false
-			for _, dom := range rt.AllowedOrigines {
-				if strings.Contains(c.Request.Header.Get("Origin"), dom) {
-					allowed = true
-				}
-			}
-			if allowed {
-				conn,err := ws.DefaultUpgraderKMUX.Upgrade(c.ResponseWriter,c.Request,nil)
-				if klog.CheckError(err) {
-					return
-				}
-				if conn != nil {
-					ctx := &WsContext{
-						Ws:     conn,
-						Params: make(map[string]string),
-						Route:  rt,
-						Request: c.Request,
-					}
-					rt.WsHandler(ctx)
-					return
-				}
-				return
-			} else {
-				c.Status(http.StatusBadRequest).Text("you are not allowed to access this route from cross origin")
-				return
-			}
+	}
+	conn,err := ws.DefaultUpgraderKMUX.Upgrade(c.ResponseWriter,c.Request,nil)
+	if klog.CheckError(err) {
+		return
+	}
+	if conn != nil {
+		ctx := &WsContext{
+			Ws:     conn,
+			Params: make(map[string]string),
+			Route:  rt,
+			Request: c.Request,
 		}
+		rt.WsHandler(ctx)
+		return
 	}
 }
 
