@@ -1,13 +1,10 @@
-// Copyright 2013 The Kago WebSocket Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
+// Copyright 2013 The Kago Author. All rights reserved.
 
 package ws
 
 import (
 	"encoding/json"
 	"io"
-	"sync"
 )
 
 // WriteJSON writes the JSON encoding of v as a message.
@@ -19,7 +16,6 @@ func WriteJSON(c *Conn, v interface{}) error {
 
 
 
-var kamMutex sync.Mutex 
 // WriteJSON writes the JSON encoding of v as a message.
 //
 // See the documentation for encoding/json Marshal for details about the
@@ -38,13 +34,11 @@ func (c *Conn) writeJSON(v interface{}) error {
 		return err
 	}
 	
-	kamMutex.Lock()
+
 	err1 := json.NewEncoder(w).Encode(v)
 	if err1 != nil {	
-		kamMutex.Unlock()
 		return err1
 	}
-	kamMutex.Unlock()
 	err2 := w.Close()
 	if err2 != nil {
 		return err2
