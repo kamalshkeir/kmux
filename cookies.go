@@ -6,9 +6,8 @@ import (
 	"time"
 )
 
-
 var (
-	COOKIES_Expires = time.Now().Add(7 * 24 * time.Hour)
+	COOKIES_Expires = 24*7*time.Hour
 	COOKIES_SameSite = http.SameSiteStrictMode
 	COOKIES_HttpOnly = true
 	COOKIES_Secure = false
@@ -21,17 +20,23 @@ func init() {
 }
 
 
+
 // SetCookie set cookie given key and value
 func (c *Context) SetCookie(key, value string) {
+	if !COOKIES_Secure {
+		if c.Request.TLS != nil {
+			COOKIES_Secure=true
+		}
+	}
 	http.SetCookie(c.ResponseWriter, &http.Cookie{
 		Name:     key,
 		Value:    value,
 		Path:     "/",
-		Expires:  COOKIES_Expires,
+		Expires:  time.Now().Add(COOKIES_Expires),
 		HttpOnly: COOKIES_HttpOnly,
 		SameSite: COOKIES_SameSite,
 		Secure: COOKIES_Secure,
-		MaxAge: 30 * 24 * 3600,
+		MaxAge: int(COOKIES_Expires.Seconds()),
 	})
 }
 
