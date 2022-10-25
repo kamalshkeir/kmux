@@ -209,10 +209,10 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 
 func handleWebsockets(c *Context, rt Route) {
-	accept := ws.FuncBeforeUpgradeWS(c.ResponseWriter,c.Request)
+	accept := ws.FuncBeforeUpgradeWS(c.Request)
 	if !accept {
 		c.Status(http.StatusMethodNotAllowed).Json(map[string]any{
-			"error":"not allowed to access ws",
+			"error":"not allowed",
 		})
 		return
 	}
