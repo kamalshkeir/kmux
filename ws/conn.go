@@ -765,6 +765,29 @@ func (c *Conn) WriteMessage(messageType int, data []byte) error {
 	return nil
 }
 
+func (c *Conn) Write(p []byte) (n int, err error) {
+	if c.isServer && (c.newCompressionWriter == nil || !c.enableWriteCompression) {
+		// Fast path with no allocations and single frame.
+		var mw messageWriter
+		if err := c.beginMessage(&mw, BinaryMessage); err != nil {
+			return 0,err
+		}
+		n := copy(c.writeBuf[mw.pos:], p)
+		mw.pos += n
+		p = p[n:]
+		return 0,mw.flushFrame(true, p)
+	}
+
+	w, err := c.NextWriter(BinaryMessage)
+	if err != nil {
+		return 0,err
+	}
+	if n, err = w.Write(p); err != nil {
+		return n,err
+	}
+	return n,w.Close()
+}
+
 func (c *Conn) writeMessage(messageType int, data []byte) error {
 	if c.isServer && (c.newCompressionWriter == nil || !c.enableWriteCompression) {
 		// Fast path with no allocations and single frame.
