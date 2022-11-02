@@ -14,6 +14,8 @@ import (
 	"sync"
 	"time"
 	"unicode/utf8"
+
+	"github.com/kamalshkeir/klog"
 )
 
 const (
@@ -769,7 +771,7 @@ func (c *Conn) Write(p []byte) (n int, err error) {
 	if c.isServer && (c.newCompressionWriter == nil || !c.enableWriteCompression) {
 		// Fast path with no allocations and single frame.
 		var mw messageWriter
-		if err := c.beginMessage(&mw, BinaryMessage); err != nil {
+		if err := c.beginMessage(&mw, BinaryMessage); klog.CheckError(err) {
 			return 0,err
 		}
 		n := copy(c.writeBuf[mw.pos:], p)
@@ -779,13 +781,15 @@ func (c *Conn) Write(p []byte) (n int, err error) {
 	}
 
 	w, err := c.NextWriter(BinaryMessage)
-	if err != nil {
+	if klog.CheckError(err) {
 		return 0,err
 	}
-	if n, err = w.Write(p); err != nil {
+	if n, err = w.Write(p); klog.CheckError(err) {
 		return n,err
 	}
-	return n,w.Close()
+	err = w.Close()
+	klog.CheckError(err)
+	return n,err
 }
 
 func (c *Conn) writeMessage(messageType int, data []byte) error {
