@@ -1145,7 +1145,7 @@ func (c *Conn) Read(p []byte) (n int, err error) {
 	if err != nil && !errors.Is(err,errUnexpectedEOF) && !errors.Is(err,io.EOF) {
 		return n,err
 	}
-	return n, err
+	return n, nil
 }
 
 // SetReadDeadline sets the read deadline on the underlying network connection.
