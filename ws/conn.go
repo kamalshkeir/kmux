@@ -1134,14 +1134,7 @@ func (c *Conn) ReadMessage() (messageType int, p []byte, err error) {
 	return messageType, p, err
 }
 
-func (c *Conn) Read(p []byte) (n int, err error) {
-	m := messageReader{c: c}
-	n,err = m.Read(p)
-	if err != nil {
-		return n,err
-	}
-	return n,nil
-}
+
 
 // SetReadDeadline sets the read deadline on the underlying network connection.
 // After a read has timed out, the websocket connection state is corrupt and
