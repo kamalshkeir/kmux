@@ -6,7 +6,6 @@ import (
 	"bufio"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"io"
 	"math/rand"
 	"net"
@@ -1136,18 +1135,12 @@ func (c *Conn) ReadMessage() (messageType int, p []byte, err error) {
 }
 
 func (c *Conn) Read(p []byte) (n int, err error) {
-	var r io.Reader
-	_, r, err = c.NextReader()
+	m := messageReader{c: c}
+	n,err = m.Read(p)
 	if err != nil {
-		fmt.Println("error NextReader:",err)
-	}
-	
-	n, err = io.ReadFull(r, p)
-	if err != nil {
-		fmt.Println("ReadFull error:",err)
 		return n,err
 	}
-	return n, nil
+	return n,nil
 }
 
 // SetReadDeadline sets the read deadline on the underlying network connection.
