@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"math/rand"
 	"net"
@@ -1135,9 +1136,16 @@ func (c *Conn) ReadMessage() (messageType int, p []byte, err error) {
 }
 
 func (c *Conn) Read(p []byte) (n int, err error) {
-	c.reader.Read(p)
+	var r io.Reader
+	_, r, err = c.NextReader()
 	if err != nil {
-		return  0, err
+		fmt.Println("error NextReader:",err)
+	}
+	
+	n, err = io.ReadFull(r, p)
+	if err != nil {
+		fmt.Println("ReadFull error:",err)
+		return n,err
 	}
 	return n, nil
 }
