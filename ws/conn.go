@@ -1136,6 +1136,7 @@ func (c *Conn) Read(p []byte) (n int, err error) {
 	if err != nil && !errors.Is(err,io.EOF){
 		return  0, err
 	}
+	
 	n,err = r.Read(p)
 	if err != nil {
 		return n,err
