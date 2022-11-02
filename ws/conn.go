@@ -1137,7 +1137,7 @@ func (c *Conn) ReadMessage() (messageType int, p []byte, err error) {
 func (c *Conn) Read(p []byte) (n int, err error) {
 	c.reader.Read(p)
 	if err != nil {
-		return  n, err
+		return  0, err
 	}
 	return n, nil
 }
