@@ -1137,13 +1137,21 @@ func (c *Conn) ReadMessage() (messageType int, p []byte, err error) {
 func (c *Conn) Read(p []byte) (n int, err error) {
 	var r io.Reader
 	_, r, err = c.NextReader()
-	if err != nil && !errors.Is(err,errUnexpectedEOF) && !errors.Is(err,io.EOF) {
-		return  0, err
+	if err != nil {
+		if errors.Is(err,errUnexpectedEOF) || errors.Is(err,io.EOF) {
+			return  0, nil
+		} else {
+			return  0, err
+		}
 	}
 	
 	n,err = r.Read(p)
-	if err != nil && !errors.Is(err,errUnexpectedEOF) && !errors.Is(err,io.EOF) {
-		return n,err
+	if err != nil {
+		if errors.Is(err,errUnexpectedEOF) || errors.Is(err,io.EOF) {
+			return  0, nil
+		} else {
+			return  n, err
+		}
 	}
 	return n, nil
 }
