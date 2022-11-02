@@ -1139,7 +1139,7 @@ func (c *Conn) Read(p []byte) (n int, err error) {
 	_, r, err = c.NextReader()
 	if err != nil {
 		if errors.Is(err,errUnexpectedEOF) || errors.Is(err,io.EOF) {
-			return  0, nil
+			return  0, io.EOF
 		} else {
 			return  0, err
 		}
@@ -1148,7 +1148,7 @@ func (c *Conn) Read(p []byte) (n int, err error) {
 	n,err = r.Read(p)
 	if err != nil {
 		if errors.Is(err,errUnexpectedEOF) || errors.Is(err,io.EOF) {
-			return  0, nil
+			return  0, io.EOF
 		} else {
 			return  n, err
 		}
