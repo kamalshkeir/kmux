@@ -212,10 +212,11 @@ func handleWebsockets(c *Context, rt Route) {
 	accept := ws.FuncBeforeUpgradeWS(c.Request)
 	if !accept {
 		c.Status(http.StatusMethodNotAllowed).Json(map[string]any{
-			"error":"not allowed",
+			"error":"origin not allowed",
 		})
 		return
 	}
+	ws.FuncBeforeUpgradeWSHandler(c.ResponseWriter,c.Request)
 	conn,err := ws.DefaultUpgraderKMUX.Upgrade(c.ResponseWriter,c.Request,nil)
 	if klog.CheckError(err) {
 		return
