@@ -20,14 +20,14 @@ var LIMITER = func(next http.Handler) http.Handler {
 				banned.Delete(r.RemoteAddr)
 			} else {
 				w.WriteHeader(http.StatusTooManyRequests)
-				w.Write([]byte("<h1>YOU DID TOO MANY REQUEST, YOU HAVE BEEN BANNED TEMPORALY </h1>"))
+				w.Write([]byte("<h1>YOU DID TOO MANY REQUEST, YOU HAVE BEEN BANNED TEMPORARILY </h1>"))
 				banned.Store(r.RemoteAddr, time.Now())
 				return
 			}
 		}
 		if !limiter.Allow() {
 			w.WriteHeader(http.StatusTooManyRequests)
-			w.Write([]byte("<h1>YOU DID TOO MANY REQUEST, YOU HAVE BEEN BANNED TEMPORALY </h1>"))
+			w.Write([]byte("<h1>YOU DID TOO MANY REQUEST, YOU HAVE BEEN BANNED TEMPORARILY </h1>"))
 			banned.Store(r.RemoteAddr, time.Now())
 			return
 		}

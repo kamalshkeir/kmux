@@ -25,10 +25,13 @@ var (
 	FuncCorsSameSite = func(c *Context, rt Route) bool {
 		return true
 	}
+	FuncOnServerShutdown = func(srv *http.Server) error {
+		return nil
+	}
 )
 
-// UseMiddlewares chain global middlewares applied on the router
-func (router *Router) UseMiddlewares(midws ...func(http.Handler) http.Handler) {
+// Use chain global middlewares applied on the router
+func (router *Router) Use(midws ...func(http.Handler) http.Handler) {
 	midwrs = append(midwrs, midws...)
 }
 
@@ -338,12 +341,22 @@ func (router *Router) gracefulShutdown() {
 		if klog.CheckError(err) {
 			return err
 		}
+		err = FuncOnServerShutdown(router.Server)
+		if klog.CheckError(err) {
+			return err
+		}
 		return nil
 	})
 	if klog.CheckError(err) {
 		os.Exit(1)
 	}
 }
+
+// will run after shutting down the server
+func (router *Router) OnShutdown(fn func(srv *http.Server) error) {
+	FuncOnServerShutdown=fn
+}
+
 
 func (router *Router) createServerCerts(domainName string, subDomains ...string) {
 	uniqueDomains := []string{}
@@ -494,8 +507,8 @@ func checkSameSite(c Context) bool {
 		return false
 	}
 
-	if len(Origines) > 0 {
-		for _, o := range Origines {
+	if len(origineslist) > 0 {
+		for _, o := range origineslist {
 			if strings.Contains(origin, o) || o == "*" {
 				return true
 			}
@@ -540,7 +553,7 @@ func checkSameSite(c Context) bool {
 
 
 func sseHeaders(c *Context) {
-	o := strings.Join(Origines, ",")
+	o := strings.Join(origineslist, ",")
 	c.SetHeader("Access-Control-Allow-Origin", o)
 	c.SetHeader("Access-Control-Allow-Headers", "Content-Type")
 	c.SetHeader("Cache-Control", "no-cache")

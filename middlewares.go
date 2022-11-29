@@ -14,10 +14,26 @@ import (
 	"github.com/kamalshkeir/klog"
 )
 
-var GZIP = gzip.GZIP
-var LIMITER = ratelimiter.LIMITER
+type GlobalMiddlewareFunc func(handler http.Handler) http.Handler
 
-func BasicAuth(next Handler, user, pass string) Handler {
+type KmuxMiddlewareFunc interface {
+	func(Handler,string,string) Handler | func(Handler) Handler
+}
+
+func Gzip() GlobalMiddlewareFunc {
+	return gzip.GZIP
+}
+
+func Limiter() GlobalMiddlewareFunc {
+	return ratelimiter.LIMITER
+}
+
+// Recovery is a global requests recovery middleware, print error if any panic
+func Recovery() GlobalMiddlewareFunc {
+	return recovery
+}
+
+func BasicAuth(kmuxHandlerFunc Handler, user, pass string) Handler {
 	return func(c *Context) {
 		// Extract the username and password from the request
 		// Authorization header. If no Authentication header is present
@@ -43,10 +59,10 @@ func BasicAuth(next Handler, user, pass string) Handler {
 			passwordMatch := (subtle.ConstantTimeCompare(passwordHash[:], expectedPasswordHash[:]) == 1)
 
 			// If the username and password are correct, then call
-			// the next handler in the chain. Make sure to return
+			// the kmuxHandlerFunc in the chain. Make sure to return
 			// afterwards, so that none of the code below is run.
 			if usernameMatch && passwordMatch {
-				next(c)
+				kmuxHandlerFunc(c)
 				return
 			}
 		}
@@ -60,7 +76,17 @@ func BasicAuth(next Handler, user, pass string) Handler {
 	}
 }
 
-var RECOVERY = func(next http.Handler) http.Handler {
+func (router *Router) AllowOrigines(origines ...string) {
+	if !corsAdded {
+		midwrs = append(midwrs, cors)
+		corsAdded = true
+	}
+	origineslist = append(origineslist, origines...)
+}
+
+ 
+
+func recovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			err := recover()
@@ -78,23 +104,12 @@ var RECOVERY = func(next http.Handler) http.Handler {
 	})
 }
 
-
-
 var corsAdded = false
-var Origines = []string{}
-
-func (router *Router) AllowOrigines(origines ...string) {
-	if !corsAdded {
-		midwrs = append(midwrs, cors)
-		corsAdded = true
-	}
-	Origines = append(Origines, origines...)
-}
-
+var origineslist = []string{}
 var cors = func(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Set headers
-		o := strings.Join(Origines, ",")
+		o := strings.Join(origineslist, ",")
 		w.Header().Set("Access-Control-Allow-Origin", o)
 		w.Header().Set("Access-Control-Allow-Headers:", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "*")
