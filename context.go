@@ -2,6 +2,7 @@ package kmux
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,10 +16,21 @@ import (
 	"github.com/kamalshkeir/klog"
 )
 
-var MultipartSize = 10 << 20
+var (
+	MultipartSize    = 10 << 20
+	beforeRenderHtml = func(reqCtx context.Context, data *map[string]any) {
+	}
+	beforeRenderHtmlSetted = false
+)
 
 type M map[string]any
 type ContextKey string
+
+// BeforeRenderHtml executed before every html render, you can use reqCtx.Value(key).(type.User) for example and add data to templates globaly
+func BeforeRenderHtml(fn func(reqCtx context.Context, data *map[string]any)) {
+	beforeRenderHtml = fn
+	beforeRenderHtmlSetted = true
+}
 
 // Context is a wrapper of responseWriter, request, and params map
 type Context struct {
@@ -108,10 +120,15 @@ func (c *Context) Html(template_name string, data map[string]any) {
 	if data == nil {
 		data = make(map[string]any)
 	}
+	data["Request"] = c.Request
+	if beforeRenderHtmlSetted {
+		beforeRenderHtml(c.Request.Context(), &data)
+	}
+
 	err := allTemplates.ExecuteTemplate(&buff, template_name, data)
 	if klog.CheckError(err) {
 		c.status = http.StatusInternalServerError
-		http.Error(c.ResponseWriter, "could not render "+template_name, c.status)
+		http.Error(c.ResponseWriter, fmt.Sprintf("could not render %s : %v", template_name, err), c.status)
 		return
 	}
 
@@ -125,8 +142,8 @@ func (c *Context) Html(template_name string, data map[string]any) {
 	klog.CheckError(err)
 }
 
-// StreamResponse send SSE Streaming Response
-func (c *Context) StreamResponse(response string) error {
+// Stream send SSE Streaming Response
+func (c *Context) Stream(response string) error {
 	c.SetHeader("Content-Type", "text/event-stream")
 	b := strings.Builder{}
 	b.WriteString("data: ")
