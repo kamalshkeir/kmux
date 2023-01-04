@@ -65,7 +65,6 @@ func (router *Router) Run(addr string) {
 	}()
 
 	// graceful Shutdown server
-	klog.Printfs("Running on http://%s\n", ADDRESS)
 	router.gracefulShutdown()
 
 }
@@ -98,7 +97,6 @@ func (router *Router) RunTLS(addr, cert, certKey string) {
 		}
 	}()
 
-	klog.Printfs("Running on https://" + ADDRESS)
 	router.gracefulShutdown()
 }
 
@@ -142,7 +140,6 @@ func (router *Router) RunAutoTLS(domainName string, subDomains ...string) {
 		}
 	}()
 
-	klog.Printfs("Running on https://" + ADDRESS)
 	router.gracefulShutdown()
 }
 
