@@ -24,7 +24,7 @@ type ContextKey string
 type Context struct {
 	http.ResponseWriter
 	*http.Request
-	params map[string]string
+	Params map[string]string
 	status int
 }
 
@@ -34,9 +34,12 @@ func (c *Context) Status(code int) *Context {
 	return c
 }
 
+func (c *Context) ParamsMap() map[string]string {
+	return c.Params
+}
 
 func (c *Context) Param(paramName string) string {
-	if v,ok := c.params[paramName];ok {
+	if v, ok := c.Params[paramName]; ok {
 		return v
 	} else {
 		return ""
@@ -147,7 +150,7 @@ func (c *Context) BodyJson() map[string]any {
 		klog.Printf("rdempty body EOF\n")
 		return nil
 	} else if err != nil {
-		klog.Printf("rderror BodyJson: %v \n",err)
+		klog.Printf("rderror BodyJson: %v \n", err)
 		return nil
 	} else {
 		return d
@@ -243,7 +246,7 @@ func (c *Context) UploadFile(received_filename, folder_out string, acceptedForma
 				url = MEDIA_DIR + "/" + folder_out + "/" + f.Filename
 				data = []byte(data_string)
 			} else {
-				klog.Printf("%s not handled \n",f.Filename)
+				klog.Printf("%s not handled \n", f.Filename)
 				return "", nil, fmt.Errorf("expecting filename to finish to be %v", acceptedFormats)
 			}
 		}
@@ -293,7 +296,7 @@ func (c *Context) UploadFiles(received_filenames []string, folder_out string, ac
 					urls = append(urls, url)
 					datas = append(datas, []byte(data_string))
 				} else {
-					klog.Printf("%s not handled \n",f.Filename)
+					klog.Printf("%s not handled \n", f.Filename)
 					return nil, nil, fmt.Errorf("expecting filename to finish to be %v", acceptedFormats)
 				}
 			}
@@ -320,7 +323,6 @@ func (c *Context) Download(data_bytes []byte, asFilename string) {
 	c.SetHeader("Content-Type", c.Request.Header.Get("Content-Type"))
 	io.Copy(c.ResponseWriter, bytesReader)
 }
-
 
 func (c *Context) GetUserIP() string {
 	IPAddress := c.Request.Header.Get("X-Real-Ip")

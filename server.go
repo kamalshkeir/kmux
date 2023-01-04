@@ -17,11 +17,11 @@ import (
 )
 
 var (
-	CORSDebug    = false
-	ReadTimeout  = 5 * time.Second
-	WriteTimeout = 20 * time.Second
-	IdleTimeout  = 20 * time.Second
-	midwrs       []func(http.Handler) http.Handler
+	CORSDebug        = false
+	ReadTimeout      = 5 * time.Second
+	WriteTimeout     = 20 * time.Second
+	IdleTimeout      = 20 * time.Second
+	midwrs           []func(http.Handler) http.Handler
 	FuncCorsSameSite = func(c *Context, rt Route) bool {
 		return true
 	}
@@ -38,23 +38,23 @@ func (router *Router) Use(midws ...func(http.Handler) http.Handler) {
 // Run HTTP server on address
 func (router *Router) Run(addr string) {
 	if ADDRESS != addr {
-		sp := strings.Split(addr,":")
+		sp := strings.Split(addr, ":")
 		if len(sp) > 0 {
-			if sp[0] != "" && sp[1] != ""{
-				ADDRESS=addr
+			if sp[0] != "" && sp[1] != "" {
+				ADDRESS = addr
 			} else {
-				HOST="localhost"
-				PORT=sp[1]
-				ADDRESS=HOST+addr
+				HOST = "localhost"
+				PORT = sp[1]
+				ADDRESS = HOST + addr
 			}
 		} else {
 			fmt.Println("error: server address not valid")
 			return
 		}
 	}
-	
+
 	router.initServer(ADDRESS)
-	
+
 	// Listen and serve
 	go func() {
 		if err := router.Server.ListenAndServe(); err != http.ErrServerClosed {
@@ -65,52 +65,52 @@ func (router *Router) Run(addr string) {
 	}()
 
 	// graceful Shutdown server
-	klog.Printfs("Running on http://%s\n",ADDRESS)
+	klog.Printfs("Running on http://%s\n", ADDRESS)
 	router.gracefulShutdown()
-	
+
 }
 
 // RunTLS HTTPS server using certificates
 func (router *Router) RunTLS(addr, cert, certKey string) {
 	if ADDRESS != addr {
-		sp := strings.Split(addr,":")
+		sp := strings.Split(addr, ":")
 		if len(sp) > 0 {
-			if sp[0] != "" && sp[1] != ""{
-				ADDRESS=addr
+			if sp[0] != "" && sp[1] != "" {
+				ADDRESS = addr
 			} else {
-				HOST="localhost"
-				PORT=sp[1]
-				ADDRESS=HOST+addr
+				HOST = "localhost"
+				PORT = sp[1]
+				ADDRESS = HOST + addr
 			}
 		} else {
 			fmt.Println("error: server address not valid")
 			return
 		}
 	}
-	// graceful Shutdown server 
+	// graceful Shutdown server
 	router.initServer(ADDRESS)
-	
+
 	go func() {
-		if err := router.Server.ListenAndServeTLS(cert,certKey); err != http.ErrServerClosed {
+		if err := router.Server.ListenAndServeTLS(cert, certKey); err != http.ErrServerClosed {
 			klog.Printf("rdUnable to shutdown the server : %v\n", err)
 		} else {
 			klog.Printfs("grServer Off!\n")
 		}
 	}()
 
-	klog.Printfs("Running on https://"+ADDRESS)
+	klog.Printfs("Running on https://" + ADDRESS)
 	router.gracefulShutdown()
 }
 
-// RunAutoTLS HTTPS server generate certificates and handle renew 
+// RunAutoTLS HTTPS server generate certificates and handle renew
 func (router *Router) RunAutoTLS(domainName string, subDomains ...string) {
 	if DOMAIN != domainName {
-		if strings.Contains(domainName,":") {
-			sp := strings.Split(domainName,":")
+		if strings.Contains(domainName, ":") {
+			sp := strings.Split(domainName, ":")
 			if sp[0] != "" {
-				ADDRESS=domainName
-				DOMAIN=sp[0]
-				PORT=sp[1]
+				ADDRESS = domainName
+				DOMAIN = sp[0]
+				PORT = sp[1]
 			} else {
 				fmt.Println("error: server domainName not valid")
 				return
@@ -118,39 +118,38 @@ func (router *Router) RunAutoTLS(domainName string, subDomains ...string) {
 		} else {
 			err := checkDomain(domainName)
 			if err == nil {
-				DOMAIN=domainName
-				PORT=":443"
-				ADDRESS=domainName+PORT
+				DOMAIN = domainName
+				PORT = ":443"
+				ADDRESS = domainName + PORT
 			} else {
 				fmt.Println("error: server domainName not valid")
 				return
 			}
 		}
-		DOMAIN=domainName
+		DOMAIN = domainName
 	}
 	if len(SUBDOMAINS) != len(subDomains) {
-		SUBDOMAINS=subDomains
+		SUBDOMAINS = subDomains
 	}
-	// graceful Shutdown server 
-	
-	router.createServerCerts(DOMAIN,SUBDOMAINS...)
+	// graceful Shutdown server
+
+	router.createServerCerts(DOMAIN, SUBDOMAINS...)
 	go func() {
 		if err := router.Server.ListenAndServe(); err != http.ErrServerClosed {
 			klog.Printf("rdUnable to shutdown the server : %v\n", err)
 		} else {
 			klog.Printf("grServer Off !\n")
-		}	
+		}
 	}()
-	
-	klog.Printfs("Running on https://"+ADDRESS)
+
+	klog.Printfs("Running on https://" + ADDRESS)
 	router.gracefulShutdown()
 }
-
 
 // ServeHTTP serveHTTP by handling methods,pattern,and params
 func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	const key ContextKey = "params"
-	c := &Context{Request: r, ResponseWriter: w, params: map[string]string{}}
+	c := &Context{Request: r, ResponseWriter: w, Params: map[string]string{}}
 	var allRoutes []Route
 	switch r.Method {
 	case "GET":
@@ -187,10 +186,10 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				if names := rt.Pattern.SubexpNames(); len(names) > 0 {
 					for i, name := range rt.Pattern.SubexpNames()[1:] {
 						if name != "" {
-							c.params[name] = paramsValues[i]
+							c.Params[name] = paramsValues[i]
 						}
 					}
-					ctx := context.WithValue(c.Request.Context(), key, c.params)
+					ctx := context.WithValue(c.Request.Context(), key, c.Params)
 					c.Request = r.WithContext(ctx)
 				}
 				if rt.WsHandler != nil {
@@ -210,25 +209,24 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	router.DefaultRoute(c)
 }
 
-
 func handleWebsockets(c *Context, rt Route) {
 	accept := ws.FuncBeforeUpgradeWS(c.Request)
 	if !accept {
 		c.Status(http.StatusMethodNotAllowed).Json(map[string]any{
-			"error":"origin not allowed",
+			"error": "origin not allowed",
 		})
 		return
 	}
-	ws.FuncBeforeUpgradeWSHandler(c.ResponseWriter,c.Request)
-	conn,err := ws.DefaultUpgraderKMUX.Upgrade(c.ResponseWriter,c.Request,nil)
+	ws.FuncBeforeUpgradeWSHandler(c.ResponseWriter, c.Request)
+	conn, err := ws.DefaultUpgraderKMUX.Upgrade(c.ResponseWriter, c.Request, nil)
 	if klog.CheckError(err) {
 		return
 	}
 	if conn != nil {
 		ctx := &WsContext{
-			Ws:     conn,
-			Params: make(map[string]string),
-			Route:  rt,
+			Ws:      conn,
+			Params:  make(map[string]string),
+			Route:   rt,
 			Request: c.Request,
 		}
 		rt.WsHandler(ctx)
@@ -253,7 +251,7 @@ func handleHttp(c *Context, rt Route) {
 		return
 	default:
 		// check cross origin
-		if checkSameSite(*c) || FuncCorsSameSite(c,rt) {
+		if checkSameSite(*c) || FuncCorsSameSite(c, rt) {
 			// same site
 			rt.Handler(c)
 			return
@@ -289,7 +287,7 @@ func handleHttp(c *Context, rt Route) {
 // initServer init the server with midws without tlsConfig
 func (router *Router) initServer(addr string) {
 	if addr != ADDRESS {
-		ADDRESS=addr
+		ADDRESS = addr
 	}
 	var handler http.Handler
 	if len(midwrs) != 0 {
@@ -354,9 +352,8 @@ func (router *Router) gracefulShutdown() {
 
 // will run after shutting down the server
 func (router *Router) OnShutdown(fn func(srv *http.Server) error) {
-	FuncOnServerShutdown=fn
+	FuncOnServerShutdown = fn
 }
-
 
 func (router *Router) createServerCerts(domainName string, subDomains ...string) {
 	uniqueDomains := []string{}
@@ -364,20 +361,20 @@ func (router *Router) createServerCerts(domainName string, subDomains ...string)
 	// add domainName
 	err := checkDomain(domainName)
 	if err == nil {
-		if !strings.Contains(domainName,":") {
-			domainName +=":443"
+		if !strings.Contains(domainName, ":") {
+			domainName += ":443"
 		}
-		domainsToCertify[domainName]=true
+		domainsToCertify[domainName] = true
 	}
 	// add pIP
 	pIP := GetPrivateIp()
-	if _,ok := domainsToCertify[pIP];!ok {
-		domainsToCertify[pIP]=true
+	if _, ok := domainsToCertify[pIP]; !ok {
+		domainsToCertify[pIP] = true
 	}
 	// add subdomains
-	for _,sub := range subDomains {
-		if _,ok := domainsToCertify[sub];!ok {
-			domainsToCertify[sub]=true
+	for _, sub := range subDomains {
+		if _, ok := domainsToCertify[sub]; !ok {
+			domainsToCertify[sub] = true
 		}
 	}
 	for k := range domainsToCertify {
@@ -391,8 +388,8 @@ func (router *Router) createServerCerts(domainName string, subDomains ...string)
 			HostPolicy: autocert.HostWhitelist(uniqueDomains...),
 		}
 		tlsConfig := m.TLSConfig()
-		tlsConfig.NextProtos = append([]string{"h2", "http/1.1"}, tlsConfig.NextProtos...) 
-		router.initAutoServer(router.Server.Addr,tlsConfig)
+		tlsConfig.NextProtos = append([]string{"h2", "http/1.1"}, tlsConfig.NextProtos...)
+		router.initAutoServer(router.Server.Addr, tlsConfig)
 		klog.Printfs("grAuto certified domains: %v", uniqueDomains)
 	}
 }
@@ -501,7 +498,7 @@ func checkSameSite(c Context) bool {
 	if CORSDebug {
 		klog.Printfs("ORIGIN:%s\n", origin)
 		klog.Printfs("ADDRESS:%s\n", ADDRESS)
-		klog.Printfs("DOMAINS:%s %v\n", DOMAIN,SUBDOMAINS)
+		klog.Printfs("DOMAINS:%s %v\n", DOMAIN, SUBDOMAINS)
 	}
 	if origin == "" {
 		return false
@@ -515,16 +512,15 @@ func checkSameSite(c Context) bool {
 		}
 	}
 
-
 	privateIp = GetPrivateIp()
 	if StringContains(c.Request.RemoteAddr, ADDRESS, "localhost", "127.0.0.1", privateIp) {
 		return true
 	}
 
 	if CORSDebug {
-		klog.Printfs("ORIGIN of remote %s is : %s\n",c.Request.RemoteAddr, origin)
+		klog.Printfs("ORIGIN of remote %s is : %s\n", c.Request.RemoteAddr, origin)
 		klog.Printfs("ADDRESS:%s\n", ADDRESS)
-		klog.Printfs("DOMAINS:%s %v\n", DOMAIN,SUBDOMAINS)
+		klog.Printfs("DOMAINS:%s %v\n", DOMAIN, SUBDOMAINS)
 	}
 
 	for _, s := range SUBDOMAINS {
@@ -539,18 +535,16 @@ func checkSameSite(c Context) bool {
 	} else if strings.Contains(origin, privateIp) {
 		foundInPrivateIps = true
 	} else {
-		klog.Printf("origin: %s not equal to privateIp: %s\n",origin, privateIp)
+		klog.Printf("origin: %s not equal to privateIp: %s\n", origin, privateIp)
 	}
 
 	sp := strings.Split(ADDRESS, ".")
-	if strings.Contains(origin, ADDRESS) || foundInPrivateIps || (len(sp) < 4 && !StringContains(ADDRESS,"localhost","127.0.0.1")) {
+	if strings.Contains(origin, ADDRESS) || foundInPrivateIps || (len(sp) < 4 && !StringContains(ADDRESS, "localhost", "127.0.0.1")) {
 		return true
 	} else {
 		return false
 	}
 }
-
-
 
 func sseHeaders(c *Context) {
 	o := strings.Join(origineslist, ",")
