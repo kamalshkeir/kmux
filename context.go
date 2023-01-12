@@ -36,8 +36,8 @@ func BeforeRenderHtml(fn func(reqCtx context.Context, data *map[string]any)) {
 type Context struct {
 	http.ResponseWriter
 	*http.Request
-	params map[string]string
-	status int
+	CtxParamsMap map[string]string
+	status       int
 }
 
 // Status set status to context, will not be writed to header
@@ -47,11 +47,11 @@ func (c *Context) Status(code int) *Context {
 }
 
 func (c *Context) ParamsMap() map[string]string {
-	return c.params
+	return c.CtxParamsMap
 }
 
 func (c *Context) Param(paramName string) string {
-	if v, ok := c.params[paramName]; ok {
+	if v, ok := c.CtxParamsMap[paramName]; ok {
 		return v
 	} else {
 		return ""

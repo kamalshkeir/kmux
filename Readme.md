@@ -1,5 +1,10 @@
 # Kmux minimalistic regex router
 
+# Install
+```sh
+go get -u github.com/kamalshkeir/kmux@v1.6.6
+```
+
 ```go
 package main
 

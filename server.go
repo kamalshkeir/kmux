@@ -146,7 +146,7 @@ func (router *Router) RunAutoTLS(domainName string, subDomains ...string) {
 // ServeHTTP serveHTTP by handling methods,pattern,and params
 func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	const key ContextKey = "params"
-	c := &Context{Request: r, ResponseWriter: w, params: map[string]string{}}
+	c := &Context{Request: r, ResponseWriter: w, CtxParamsMap: map[string]string{}}
 	var allRoutes []Route
 	switch r.Method {
 	case "GET":
@@ -183,10 +183,10 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				if names := rt.Pattern.SubexpNames(); len(names) > 0 {
 					for i, name := range rt.Pattern.SubexpNames()[1:] {
 						if name != "" {
-							c.params[name] = paramsValues[i]
+							c.CtxParamsMap[name] = paramsValues[i]
 						}
 					}
-					ctx := context.WithValue(c.Request.Context(), key, c.params)
+					ctx := context.WithValue(c.Request.Context(), key, c.CtxParamsMap)
 					c.Request = r.WithContext(ctx)
 				}
 				if rt.WsHandler != nil {
