@@ -18,7 +18,7 @@ var allTemplates = template.New("")
 
 func (router *Router) NewFuncMap(funcName string, function any) {
 	if _, ok := functions[funcName]; ok {
-		klog.Printf("rdunable to add %s,already exist !\n",funcName)
+		klog.Printf("rdunable to add %s,already exist !\n", funcName)
 	} else {
 		functions[funcName] = function
 	}
@@ -177,7 +177,7 @@ var functions = template.FuncMap{
 			}
 		default:
 			if v != nil {
-				klog.Printf("rdtype of %v is not handled,type is: %v\n",t, v)
+				klog.Printf("rdtype of %v is not handled,type is: %v\n", t, v)
 			}
 			valueToReturn = ""
 		}
@@ -213,7 +213,7 @@ var functions = template.FuncMap{
 			}
 		default:
 			if v != nil {
-				klog.Printf("rdtype of %v is not handled,type is: %v\n",t, v)
+				klog.Printf("rdtype of %v is not handled,type is: %v\n", t, v)
 			}
 			valueToReturn = ""
 		}

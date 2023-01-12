@@ -146,7 +146,7 @@ func (router *Router) RunAutoTLS(domainName string, subDomains ...string) {
 // ServeHTTP serveHTTP by handling methods,pattern,and params
 func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	const key ContextKey = "params"
-	c := &Context{Request: r, ResponseWriter: w, Params: map[string]string{}}
+	c := &Context{Request: r, ResponseWriter: w, params: map[string]string{}}
 	var allRoutes []Route
 	switch r.Method {
 	case "GET":
@@ -183,10 +183,10 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				if names := rt.Pattern.SubexpNames(); len(names) > 0 {
 					for i, name := range rt.Pattern.SubexpNames()[1:] {
 						if name != "" {
-							c.Params[name] = paramsValues[i]
+							c.params[name] = paramsValues[i]
 						}
 					}
-					ctx := context.WithValue(c.Request.Context(), key, c.Params)
+					ctx := context.WithValue(c.Request.Context(), key, c.params)
 					c.Request = r.WithContext(ctx)
 				}
 				if rt.WsHandler != nil {
@@ -330,7 +330,7 @@ func (router *Router) initAutoServer(addr string, tlsconf *tls.Config) {
 
 // Graceful Shutdown
 func (router *Router) gracefulShutdown() {
-	err := GracefulShutdown(func() error {
+	err := onShutdown(func() error {
 		// Shutdown server
 		err := router.Server.Shutdown(context.Background())
 		if klog.CheckError(err) {

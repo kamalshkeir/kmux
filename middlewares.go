@@ -17,7 +17,7 @@ import (
 type GlobalMiddlewareFunc func(handler http.Handler) http.Handler
 
 type KmuxMiddlewareFunc interface {
-	func(Handler,string,string) Handler | func(Handler) Handler
+	func(Handler, string, string) Handler | func(Handler) Handler
 }
 
 func Gzip() GlobalMiddlewareFunc {
@@ -84,14 +84,12 @@ func (router *Router) AllowOrigines(origines ...string) {
 	origineslist = append(origineslist, origines...)
 }
 
- 
-
 func recovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			err := recover()
 			if err != nil {
-				klog.Printf("rd%v\n",err)
+				klog.Printf("rd%v\n", err)
 				jsonBody, _ := json.Marshal(map[string]string{
 					"error": "There was an internal server error",
 				})
@@ -121,7 +119,3 @@ var cors = func(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
-
-
-
-

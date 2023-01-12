@@ -36,7 +36,7 @@ func BeforeRenderHtml(fn func(reqCtx context.Context, data *map[string]any)) {
 type Context struct {
 	http.ResponseWriter
 	*http.Request
-	Params map[string]string
+	params map[string]string
 	status int
 }
 
@@ -47,11 +47,11 @@ func (c *Context) Status(code int) *Context {
 }
 
 func (c *Context) ParamsMap() map[string]string {
-	return c.Params
+	return c.params
 }
 
 func (c *Context) Param(paramName string) string {
-	if v, ok := c.Params[paramName]; ok {
+	if v, ok := c.params[paramName]; ok {
 		return v
 	} else {
 		return ""
@@ -111,7 +111,8 @@ func (c *Context) Text(body string) {
 		c.status = 200
 	}
 	c.WriteHeader(c.status)
-	c.ResponseWriter.Write([]byte(body))
+	_, err := c.ResponseWriter.Write([]byte(body))
+	klog.CheckError(err)
 }
 
 // Html return template_name with data to the client
@@ -143,17 +144,14 @@ func (c *Context) Html(template_name string, data map[string]any) {
 }
 
 // Stream send SSE Streaming Response
-func (c *Context) Stream(response string) error {
+func (c *Context) Stream(response string) {
 	c.SetHeader("Content-Type", "text/event-stream")
 	b := strings.Builder{}
 	b.WriteString("data: ")
 	b.WriteString(response)
 	b.WriteString("\n\n")
 	_, err := c.ResponseWriter.Write([]byte(b.String()))
-	if err != nil {
-		return err
-	}
-	return nil
+	klog.CheckError(err)
 }
 
 // BodyJson get json body from request and return map
@@ -200,7 +198,8 @@ func (c *Context) ServeFile(content_type, path_to_file string) {
 // ServeEmbededFile serve an embeded file from handler
 func (c *Context) ServeEmbededFile(content_type string, embed_file []byte) {
 	c.SetHeader("Content-Type", content_type)
-	_, _ = c.ResponseWriter.Write(embed_file)
+	_, err := c.ResponseWriter.Write(embed_file)
+	klog.CheckError(err)
 }
 
 func (c *Context) ParseMultipartForm(size ...int64) (formData url.Values, formFiles map[string][]*multipart.FileHeader) {

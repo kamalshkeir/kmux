@@ -7,25 +7,23 @@ import (
 )
 
 var (
-	COOKIES_Expires = 24*7*time.Hour
+	COOKIES_Expires  = 24 * 7 * time.Hour
 	COOKIES_SameSite = http.SameSiteStrictMode
 	COOKIES_HttpOnly = true
-	COOKIES_Secure = false
+	COOKIES_Secure   = false
 )
 
 func init() {
-	if strings.Contains(PORT,"443") {
-		COOKIES_Secure=true
+	if strings.Contains(PORT, "443") {
+		COOKIES_Secure = true
 	}
 }
-
-
 
 // SetCookie set cookie given key and value
 func (c *Context) SetCookie(key, value string) {
 	if !COOKIES_Secure {
 		if c.Request.TLS != nil {
-			COOKIES_Secure=true
+			COOKIES_Secure = true
 		}
 	}
 	http.SetCookie(c.ResponseWriter, &http.Cookie{
@@ -35,8 +33,8 @@ func (c *Context) SetCookie(key, value string) {
 		Expires:  time.Now().Add(COOKIES_Expires),
 		HttpOnly: COOKIES_HttpOnly,
 		SameSite: COOKIES_SameSite,
-		Secure: COOKIES_Secure,
-		MaxAge: int(COOKIES_Expires.Seconds()),
+		Secure:   COOKIES_Secure,
+		MaxAge:   int(COOKIES_Expires.Seconds()),
 	})
 }
 
@@ -58,7 +56,7 @@ func (c *Context) DeleteCookie(key string) {
 		Expires:  time.Now(),
 		HttpOnly: COOKIES_HttpOnly,
 		SameSite: COOKIES_SameSite,
-		Secure: COOKIES_Secure,
-		MaxAge: -1,
+		Secure:   COOKIES_Secure,
+		MaxAge:   -1,
 	})
 }

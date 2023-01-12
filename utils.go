@@ -18,8 +18,6 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
-
-
 var Templates embed.FS
 var Static embed.FS
 var TemplateEmbeded = false
@@ -36,7 +34,6 @@ func (r *Router) Embed(staticDir *embed.FS, templateDir *embed.FS) {
 		fmt.Println("Embed: cannot embed static and templates:", staticDir, templateDir)
 	}
 }
-
 
 func StringContains(s string, subs ...string) bool {
 	for _, sub := range subs {
@@ -58,14 +55,12 @@ func SliceContains[T comparable](elems []T, vs ...T) bool {
 	return false
 }
 
-
-func GracefulShutdown(f func() error) error {
+func onShutdown(f func() error) error {
 	s := make(chan os.Signal, 1)
 	signal.Notify(s, os.Interrupt)
 	<-s
 	return f()
 }
-
 
 /* Private Ip */
 func GetPrivateIp() string {
@@ -123,7 +118,6 @@ func getOutboundIP() string {
 	return ""
 }
 
-
 // UUID
 
 func GenerateUUID() (string, error) {
@@ -150,7 +144,6 @@ func encodeHex(dst []byte, uuid [16]byte) {
 	dst[23] = '-'
 	hex.Encode(dst[24:], uuid[10:])
 }
-
 
 func ToSlug(s string) (string, error) {
 	str := []byte(strings.ToLower(s))
