@@ -17,9 +17,8 @@ import (
 )
 
 var (
-	MultipartSize    = 10 << 20
-	beforeRenderHtml = func(reqCtx context.Context, data *map[string]any) {
-	}
+	MultipartSize          = 10 << 20
+	beforeRenderHtml       = map[string]func(reqCtx context.Context, data *map[string]any){}
 	beforeRenderHtmlSetted = false
 )
 
@@ -27,8 +26,8 @@ type M map[string]any
 type ContextKey string
 
 // BeforeRenderHtml executed before every html render, you can use reqCtx.Value(key).(type.User) for example and add data to templates globaly
-func BeforeRenderHtml(fn func(reqCtx context.Context, data *map[string]any)) {
-	beforeRenderHtml = fn
+func BeforeRenderHtml(uniqueName string, fn func(reqCtx context.Context, data *map[string]any)) {
+	beforeRenderHtml[uniqueName] = fn
 	beforeRenderHtmlSetted = true
 }
 
@@ -123,7 +122,9 @@ func (c *Context) Html(template_name string, data map[string]any) {
 	}
 	data["Request"] = c.Request
 	if beforeRenderHtmlSetted {
-		beforeRenderHtml(c.Request.Context(), &data)
+		for _, v := range beforeRenderHtml {
+			v(c.Request.Context(), &data)
+		}
 	}
 
 	err := allTemplates.ExecuteTemplate(&buff, template_name, data)
@@ -141,6 +142,25 @@ func (c *Context) Html(template_name string, data map[string]any) {
 
 	_, err = buff.WriteTo(c.ResponseWriter)
 	klog.CheckError(err)
+}
+
+func (c *Context) IsAuthenticated() bool {
+	const key ContextKey = "user"
+	if user := c.Request.Context().Value(key); user != nil {
+		return true
+	} else {
+		return false
+	}
+}
+
+func (c *Context) User() (any, bool) {
+	const key ContextKey = "user"
+	user := c.Request.Context().Value(key)
+	if user != nil {
+		return user, true
+	} else {
+		return nil, false
+	}
 }
 
 // Stream send SSE Streaming Response
