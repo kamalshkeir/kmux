@@ -144,18 +144,28 @@ func (c *Context) Html(template_name string, data map[string]any) {
 	klog.CheckError(err)
 }
 
-func (c *Context) IsAuthenticated() bool {
-	const key ContextKey = "user"
-	if user := c.Request.Context().Value(key); user != nil {
+func (c *Context) IsAuthenticated(key ...ContextKey) bool {
+	var k ContextKey
+	if len(key) > 0 {
+		k = key[0]
+	} else {
+		k = ContextKey("user")
+	}
+	if user := c.Request.Context().Value(k); user != nil {
 		return true
 	} else {
 		return false
 	}
 }
 
-func (c *Context) User() (any, bool) {
-	const key ContextKey = "user"
-	user := c.Request.Context().Value(key)
+func (c *Context) User(key ...ContextKey) (any, bool) {
+	var k ContextKey
+	if len(key) > 0 {
+		k = key[0]
+	} else {
+		k = ContextKey("user")
+	}
+	user := c.Request.Context().Value(k)
 	if user != nil {
 		return user, true
 	} else {
