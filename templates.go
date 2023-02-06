@@ -175,9 +175,15 @@ var functions = template.FuncMap{
 					}
 				}
 			}
+		case int:
+			valueToReturn = time.Unix(int64(v), 0).String()
+		case uint:
+			valueToReturn = time.Unix(int64(v), 0).String()
+		case int64:
+			valueToReturn = time.Unix(v, 0).String()
 		default:
 			if v != nil {
-				klog.Printf("rdtype of %v is not handled,type is: %v\n", t, v)
+				klog.Printf("rdtype of %v %T is not handled,type is: %v\n", t, v, v)
 			}
 			valueToReturn = ""
 		}
