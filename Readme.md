@@ -2,7 +2,7 @@
 
 # Install
 ```sh
-go get -u github.com/kamalshkeir/kmux@v1.7.0
+go get -u github.com/kamalshkeir/kmux@v1.7.1
 ```
 
 ```go

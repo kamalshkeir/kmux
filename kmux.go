@@ -332,15 +332,23 @@ func (gr *GroupRouter) WS(pattern string, wsHandler WsHandler, allowed_origines 
 }
 
 // SSE handle SSE to a route
-func (router *Router) SSE(pattern string, handler Handler, allowed_origines ...string) {
-	if !strings.HasPrefix(pattern, "/") {
-		pattern = "/" + pattern
-	}
-	router.handle(SSE, pattern, handler, nil, allowed_origines)
+func (router *Router) SSE(pattern string, handler Handler) {
+	router.GET(pattern, func(c *Context) {
+		c.SetHeader("Access-Control-Allow-Origin", "*")
+		c.SetHeader("Access-Control-Allow-Headers", "Content-Type")
+		c.SetHeader("Content-Type", "text/event-stream")
+		c.SetHeader("Cache-Control", "no-cache")
+		c.SetHeader("Connection", "keep-alive")
+		handler(c)
+	})
 }
-func (gr *GroupRouter) SSE(pattern string, handler Handler, allowed_origines ...string) {
-	if !strings.HasPrefix(pattern, "/") {
-		pattern = "/" + pattern
-	}
-	gr.Router.handle(SSE, gr.Group+pattern, handler, nil, allowed_origines)
+func (gr *GroupRouter) SSE(pattern string, handler Handler) {
+	gr.GET(pattern, func(c *Context) {
+		c.SetHeader("Access-Control-Allow-Origin", "*")
+		c.SetHeader("Access-Control-Allow-Headers", "Content-Type")
+		c.SetHeader("Content-Type", "text/event-stream")
+		c.SetHeader("Cache-Control", "no-cache")
+		c.SetHeader("Connection", "keep-alive")
+		handler(c)
+	})
 }

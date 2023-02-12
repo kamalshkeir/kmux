@@ -152,8 +152,6 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		if r.Header.Get("Upgrade") == "websocket" {
 			allRoutes = router.Routes[WS]
-		} else if strings.Contains(r.URL.Path, "/sse/") {
-			allRoutes = router.Routes[SSE]
 		} else {
 			allRoutes = router.Routes[GET]
 		}
@@ -234,13 +232,6 @@ func handleWebsockets(c *Context, rt Route) {
 func handleHttp(c *Context, rt Route) {
 	switch rt.Method {
 	case "GET":
-		if rt.Method == "SSE" {
-			sseHeaders(c)
-		}
-		rt.Handler(c)
-		return
-	case "SSE":
-		sseHeaders(c)
 		rt.Handler(c)
 		return
 	case "HEAD", "OPTIONS":
@@ -544,12 +535,4 @@ func checkSameSite(c Context) bool {
 	} else {
 		return false
 	}
-}
-
-func sseHeaders(c *Context) {
-	o := strings.Join(origineslist, ",")
-	c.SetHeader("Access-Control-Allow-Origin", o)
-	c.SetHeader("Access-Control-Allow-Headers", "Content-Type")
-	c.SetHeader("Cache-Control", "no-cache")
-	c.SetHeader("Connection", "keep-alive")
 }

@@ -175,7 +175,6 @@ func (c *Context) User(key ...ContextKey) (any, bool) {
 
 // Stream send SSE Streaming Response
 func (c *Context) Stream(response string) {
-	c.SetHeader("Content-Type", "text/event-stream")
 	b := strings.Builder{}
 	b.WriteString("data: ")
 	b.WriteString(response)
