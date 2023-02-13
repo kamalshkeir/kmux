@@ -175,12 +175,27 @@ func (c *Context) User(key ...ContextKey) (any, bool) {
 
 // Stream send SSE Streaming Response
 func (c *Context) Stream(response string) {
+	var f http.Flusher
+	var ok bool
+	if f, ok = c.ResponseWriter.(http.Flusher); !ok {
+		http.Error(c.ResponseWriter, "sse not supported", 400)
+		return
+	}
 	b := strings.Builder{}
 	b.WriteString("data: ")
 	b.WriteString(response)
 	b.WriteString("\n\n")
 	_, err := c.ResponseWriter.Write([]byte(b.String()))
 	klog.CheckError(err)
+	f.Flush()
+}
+
+func (c *Context) FlushResponseWriterBuffer(response string) bool {
+	f, ok := c.ResponseWriter.(http.Flusher)
+	if ok {
+		f.Flush()
+	}
+	return ok
 }
 
 // BodyJson get json body from request and return map
