@@ -109,6 +109,12 @@ func (router *Router) WithPprof(path ...string) {
 		case "pprof", "":
 			pprof.Index(c.ResponseWriter, c.Request)
 			return
+		case "profile":
+			pprof.Profile(c.ResponseWriter, c.Request)
+			return
+		case "trace":
+			pprof.Trace(c.ResponseWriter, c.Request)
+			return
 		default:
 			pprof.Handler(ty).ServeHTTP(c.ResponseWriter, c.Request)
 			return
