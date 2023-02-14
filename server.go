@@ -57,6 +57,7 @@ func (router *Router) Run(addr string) {
 
 	// Listen and serve
 	go func() {
+		klog.Printfs("mgrunning on http://%s\n", ADDRESS)
 		if err := router.Server.ListenAndServe(); err != http.ErrServerClosed {
 			klog.Printf("rdUnable to shutdown the server : %v\n", err)
 		} else {
@@ -66,7 +67,6 @@ func (router *Router) Run(addr string) {
 
 	// graceful Shutdown server
 	router.gracefulShutdown()
-
 }
 
 // RunTLS HTTPS server using certificates
@@ -90,6 +90,7 @@ func (router *Router) RunTLS(addr, cert, certKey string) {
 	router.initServer(ADDRESS)
 
 	go func() {
+		klog.Printfs("mgrunning on https://%s\n", ADDRESS)
 		if err := router.Server.ListenAndServeTLS(cert, certKey); err != http.ErrServerClosed {
 			klog.Printf("rdUnable to shutdown the server : %v\n", err)
 		} else {
@@ -133,6 +134,7 @@ func (router *Router) RunAutoTLS(domainName string, subDomains ...string) {
 
 	router.createServerCerts(DOMAIN, SUBDOMAINS...)
 	go func() {
+		klog.Printfs("mgrunning on https://%s , subdomains: %v\n", DOMAIN, SUBDOMAINS)
 		if err := router.Server.ListenAndServe(); err != http.ErrServerClosed {
 			klog.Printf("rdUnable to shutdown the server : %v\n", err)
 		} else {

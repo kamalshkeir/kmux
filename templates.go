@@ -2,6 +2,7 @@ package kmux
 
 import (
 	"embed"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -138,6 +139,13 @@ var functions = template.FuncMap{
 		}
 		return false
 	},
+	"jsonIndented": func(data any) string {
+		d, err := json.MarshalIndent(data, "", "\t")
+		if err != nil {
+			d = []byte("cannot marshal data")
+		}
+		return string(d)
+	},
 	"generateUUID": func() template.HTML {
 		uuid, _ := GenerateUUID()
 		return template.HTML(uuid)
@@ -148,7 +156,7 @@ var functions = template.FuncMap{
 	"safe": func(str string) template.HTML {
 		return template.HTML(str)
 	},
-	"timeFormat": func(t any) string {
+	"jsTime": func(t any) string {
 		valueToReturn := ""
 		switch v := t.(type) {
 		case time.Time:
@@ -157,6 +165,12 @@ var functions = template.FuncMap{
 			} else {
 				valueToReturn = time.Now().Format("2006-01-02T15:04")
 			}
+		case int:
+			valueToReturn = time.Unix(int64(v), 0).Format("2006-01-02T15:04")
+		case uint:
+			valueToReturn = time.Unix(int64(v), 0).Format("2006-01-02T15:04")
+		case int64:
+			valueToReturn = time.Unix(v, 0).Format("2006-01-02T15:04")
 		case string:
 			if len(v) >= len("2006-01-02T15:04") && strings.Contains(v[:13], "T") {
 				p, err := time.Parse("2006-01-02T15:04", v)
@@ -175,12 +189,6 @@ var functions = template.FuncMap{
 					}
 				}
 			}
-		case int:
-			valueToReturn = time.Unix(int64(v), 0).String()
-		case uint:
-			valueToReturn = time.Unix(int64(v), 0).String()
-		case int64:
-			valueToReturn = time.Unix(v, 0).String()
 		default:
 			if v != nil {
 				klog.Printf("rdtype of %v %T is not handled,type is: %v\n", t, v, v)

@@ -2,6 +2,7 @@ package kmux
 
 import (
 	"net/http"
+	"net/http/pprof"
 	"regexp"
 	"strings"
 
@@ -94,6 +95,42 @@ func (router *Router) handle(method int, pattern string, handler Handler, wshand
 	router.Routes[method] = append(router.Routes[method], route)
 }
 
+// WithPprof enable std library pprof at /debug/pprof, prefix default to 'debug'
+func (router *Router) WithPprof(path ...string) {
+	if len(path) > 0 && strings.Contains(path[0], "/") {
+		path[0] = strings.TrimPrefix(path[0], "/")
+		path[0] = strings.TrimSuffix(path[0], "/")
+	} else {
+		path = append(path, "debug")
+	}
+	handler := func(c *Context) {
+		ty := c.Param("type")
+		switch ty {
+		case "pprof", "":
+			pprof.Index(c.ResponseWriter, c.Request)
+			return
+		default:
+			pprof.Handler(ty).ServeHTTP(c.ResponseWriter, c.Request)
+			return
+		}
+	}
+	router.GET("/"+path[0]+"/:type", handler)
+}
+
+// WithMetrics enable path /metrics (default) using http.Handler like promhttp.Handler()
+func (router *Router) WithMetrics(httpHandler http.Handler, path ...string) {
+	if len(path) > 0 && strings.Contains(path[0], "/") {
+		path[0] = strings.TrimPrefix(path[0], "/")
+		path[0] = strings.TrimSuffix(path[0], "/")
+	} else {
+		path = append(path, "metrics")
+	}
+
+	router.GET("/"+path[0], func(c *Context) {
+		httpHandler.ServeHTTP(c.ResponseWriter, c.Request)
+	})
+}
+
 func (router *Router) Group(prefix string) *GroupRouter {
 	if !strings.HasPrefix(prefix, "/") {
 		prefix = "/" + prefix
@@ -102,10 +139,6 @@ func (router *Router) Group(prefix string) *GroupRouter {
 		Router: *router,
 		Group:  prefix,
 	}
-}
-
-func (gr *GroupRouter) Use(midws ...func(http.Handler) http.Handler) {
-
 }
 
 // GET handle GET to a route
