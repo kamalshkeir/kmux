@@ -175,20 +175,22 @@ func (c *Context) User(key ...ContextKey) (any, bool) {
 }
 
 // Stream send SSE Streaming Response
-func (c *Context) Stream(response string) {
+func (c *Context) Stream(response string) error {
 	var f http.Flusher
 	var ok bool
 	if f, ok = c.ResponseWriter.(http.Flusher); !ok {
-		http.Error(c.ResponseWriter, "sse not supported", 400)
-		return
+		return fmt.Errorf("sse not supported")
 	}
+	defer f.Flush()
 	b := strings.Builder{}
 	b.WriteString("data: ")
 	b.WriteString(response)
 	b.WriteString("\n\n")
 	_, err := c.ResponseWriter.Write([]byte(b.String()))
-	klog.CheckError(err)
-	f.Flush()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *Context) FlushResponseWriterBuffer(response string) bool {
