@@ -30,9 +30,6 @@ func (router *Router) LocalStatics(dirPath, webPath string) {
 	if webPath[0] != '/' {
 		webPath = "/" + webPath
 	}
-	if webPath[len(webPath)-1] != '/' {
-		webPath += "/"
-	}
 	router.GET(webPath+"*", func(c *Context) {
 		http.StripPrefix(webPath, http.FileServer(http.Dir(dirPath))).ServeHTTP(c.ResponseWriter, c.Request)
 	})
@@ -42,9 +39,6 @@ func (router *Router) EmbededStatics(pathLocalDir string, embeded embed.FS, webP
 	pathLocalDir = filepath.ToSlash(pathLocalDir)
 	if webPath[0] != '/' {
 		webPath = "/" + webPath
-	}
-	if webPath[len(webPath)-1] != '/' {
-		webPath += "/"
 	}
 	toembed_dir, err := fs.Sub(embeded, pathLocalDir)
 	if err != nil {

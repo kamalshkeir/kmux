@@ -476,7 +476,7 @@ func adaptParams(url string) string {
 	}
 
 	if url[len(url)-1] == '*' {
-		return url
+		return "^" + url
 	} else {
 		if strings.HasSuffix(url, "/") {
 			return "^" + url[:len(url)-1] + "(|/)?$"
