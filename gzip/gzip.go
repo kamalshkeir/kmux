@@ -58,7 +58,6 @@ func (wrw *WrappedResponseWriter) Write(d []byte) (int, error) {
 
 func (wrw *WrappedResponseWriter) Flush() {
 	wrw.gwriter.Flush()
-	wrw.gwriter.Close()
 }
 
 func (wrw *WrappedResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
