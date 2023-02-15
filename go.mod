@@ -2,7 +2,7 @@ module github.com/kamalshkeir/kmux
 
 go 1.19
 
-require golang.org/x/net v0.6.0 // indirect
+require golang.org/x/net v0.7.0 // indirect
 
 require (
 	github.com/kamalshkeir/klog v1.0.0
