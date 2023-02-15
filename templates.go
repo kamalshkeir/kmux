@@ -59,7 +59,7 @@ func (router *Router) EmbededStatics(pathLocalDir string, embeded embed.FS, webP
 
 func (router *Router) ServeLocalFile(file, endpoint, contentType string) {
 	router.GET(endpoint, func(c *Context) {
-		c.ServeFile(contentType, endpoint)
+		c.ServeFile(contentType, file)
 	})
 }
 
