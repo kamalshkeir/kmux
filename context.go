@@ -176,6 +176,7 @@ func (c *Context) User(key ...ContextKey) (any, bool) {
 
 // Stream send SSE Streaming Response
 func (c *Context) Stream(response string) error {
+	
 	var f http.Flusher
 	var ok bool
 	if f, ok = c.ResponseWriter.(http.Flusher); !ok {
