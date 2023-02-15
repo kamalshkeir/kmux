@@ -55,7 +55,7 @@ func SliceContains[T comparable](elems []T, vs ...T) bool {
 	return false
 }
 
-func onShutdown(f func() error) error {
+func Graceful(f func() error) error {
 	s := make(chan os.Signal, 1)
 	signal.Notify(s, os.Interrupt)
 	<-s

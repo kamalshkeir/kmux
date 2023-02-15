@@ -33,6 +33,7 @@ func BeforeRenderHtml(uniqueName string, fn func(reqCtx context.Context, data *m
 
 // Context is a wrapper of responseWriter, request, and params map
 type Context struct {
+	*Router
 	http.ResponseWriter
 	*http.Request
 	CtxParamsMap map[string]string
@@ -225,7 +226,7 @@ func (c *Context) BodyText() string {
 	return string(b)
 }
 
-// Redirect redirect the client to the specified path with a custom code
+// Redirect redirect the client to the specified path with a custom code, default status 307
 func (c *Context) Redirect(path string) {
 	if c.status == 0 {
 		c.status = http.StatusTemporaryRedirect

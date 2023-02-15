@@ -148,7 +148,7 @@ func (router *Router) RunAutoTLS(domainName string, subDomains ...string) {
 // ServeHTTP serveHTTP by handling methods,pattern,and params
 func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	const key ContextKey = "params"
-	c := &Context{Request: r, ResponseWriter: w, CtxParamsMap: map[string]string{}}
+	c := &Context{Router: router, Request: r, ResponseWriter: w, CtxParamsMap: map[string]string{}}
 	var allRoutes []Route
 	switch r.Method {
 	case "GET":
@@ -221,6 +221,7 @@ func handleWebsockets(c *Context, rt Route) {
 	}
 	if conn != nil {
 		ctx := &WsContext{
+			Router:  c.Router,
 			Ws:      conn,
 			Params:  make(map[string]string),
 			Route:   rt,
@@ -323,7 +324,7 @@ func (router *Router) initAutoServer(addr string, tlsconf *tls.Config) {
 
 // Graceful Shutdown
 func (router *Router) gracefulShutdown() {
-	err := onShutdown(func() error {
+	err := Graceful(func() error {
 		// Shutdown server
 		err := router.Server.Shutdown(context.Background())
 		if klog.CheckError(err) {
@@ -432,7 +433,7 @@ func checkDomain(name string) error {
 	return nil
 }
 
-func GetParam(r *http.Request) (map[string]string, bool) {
+func GetParams(r *http.Request) (map[string]string, bool) {
 	const key ContextKey = "params"
 	params, ok := r.Context().Value(key).(map[string]string)
 	if ok {
@@ -441,7 +442,27 @@ func GetParam(r *http.Request) (map[string]string, bool) {
 	return nil, false
 }
 
+func WrapRegexParam(name, typeToValidate string) string {
+	var wrappedString string
+	switch typeToValidate {
+	case "str", "string":
+		wrappedString = `(?P<` + name + `>\w+)`
+	case "int", "num":
+		wrappedString = `(?P<` + name + `>\d+)`
+	case "slug":
+		wrappedString = `(?P<` + name + `>[a-z0-9]+(?:-[a-z0-9]+)*)`
+	case "float":
+		wrappedString = `(?P<` + name + `>[-+]?([0-9]*\.[0-9]+|[0-9]+))`
+	default:
+		wrappedString = `(?P<` + name + `>[a-z0-9]+(?:-[a-z0-9]+)*)`
+	}
+	return wrappedString
+}
+
 func adaptParams(url string) string {
+	if url[0] == 'r' && url[1] == 'e' && url[2] == 'g' && url[3] == ':' {
+		return url[4:]
+	}
 	if strings.Contains(url, ":") {
 		urlElements := strings.Split(url, "/")
 		urlElements = urlElements[1:]
@@ -453,19 +474,7 @@ func adaptParams(url string) string {
 				nameType := strings.Split(elem, ":")
 				name := nameType[0]
 				name_type := nameType[1]
-				switch name_type {
-				case "str":
-					//urlElements[i] = `(?P<` + name + `>\w+)+\/?`
-					urlElements[i] = `(?P<` + name + `>\w+)`
-				case "int":
-					urlElements[i] = `(?P<` + name + `>\d+)`
-				case "slug":
-					urlElements[i] = `(?P<` + name + `>[a-z0-9]+(?:-[a-z0-9]+)*)`
-				case "float":
-					urlElements[i] = `(?P<` + name + `>[-+]?([0-9]*\.[0-9]+|[0-9]+))`
-				default:
-					urlElements[i] = `(?P<` + name + `>[a-z0-9]+(?:-[a-z0-9]+)*)`
-				}
+				urlElements[i] = WrapRegexParam(name, name_type)
 			}
 		}
 		join := strings.Join(urlElements, "/")

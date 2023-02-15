@@ -2,7 +2,7 @@
 
 # Install
 ```sh
-go get -u github.com/kamalshkeir/kmux@v1.7.6
+go get -u github.com/kamalshkeir/kmux@v1.7.7
 ```
 
 ```go
@@ -17,7 +17,7 @@ func main() {
 	app := kmux.New()
 
     // use global middlewares
-    app.Use(kmux.Gzip(),kmux.Recovery(),kmux.Limiter())
+    app.Use(kmux.Gzip(),kmux.Recovery(),kmux.Limiter(),kmux.Logs())
 
     // Group
     anyGroup := app.Group("/any") // or grp := app.Group("any")

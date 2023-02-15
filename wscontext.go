@@ -7,8 +7,8 @@ import (
 	"github.com/kamalshkeir/kmux/ws"
 )
 
-
 type WsContext struct {
+	*Router
 	Ws     *ws.Conn
 	Params map[string]string
 	Route
@@ -17,7 +17,7 @@ type WsContext struct {
 
 // ReceiveText receive text from ws and disconnect when stop receiving
 func (c *WsContext) ReceiveText() (string, error) {
-	_,msgByte,err := c.Ws.ReadMessage()
+	_, msgByte, err := c.Ws.ReadMessage()
 	if err != nil {
 		return "", err
 	}
@@ -69,15 +69,15 @@ func (c *WsContext) BroadcastExceptCaller(data map[string]any) error {
 
 // Text send text to the client
 func (c *WsContext) Text(data string) error {
-	err := c.Ws.WriteMessage(ws.BinaryMessage,[]byte(data))
+	err := c.Ws.WriteMessage(ws.BinaryMessage, []byte(data))
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-
 var mu sync.RWMutex
+
 // RemoveRequester remove the client from Clients list in context
 func (c *WsContext) RemoveRequester(name ...string) {
 	mu.Lock()
@@ -115,5 +115,5 @@ func (c *WsContext) AddClient(key string) {
 			}
 		}
 	}
-	
+
 }

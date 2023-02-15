@@ -30,6 +30,9 @@ func (router *Router) LocalStatics(dirPath, webPath string) {
 	if webPath[0] != '/' {
 		webPath = "/" + webPath
 	}
+	if webPath[len(webPath)-1] == '/' {
+		webPath = webPath[:len(webPath)-1]
+	}
 	router.GET(webPath+"*", func(c *Context) {
 		http.StripPrefix(webPath, http.FileServer(http.Dir(dirPath))).ServeHTTP(c.ResponseWriter, c.Request)
 	})
@@ -40,6 +43,9 @@ func (router *Router) EmbededStatics(pathLocalDir string, embeded embed.FS, webP
 	if webPath[0] != '/' {
 		webPath = "/" + webPath
 	}
+	if webPath[len(webPath)-1] == '/' {
+		webPath = webPath[:len(webPath)-1]
+	}
 	toembed_dir, err := fs.Sub(embeded, pathLocalDir)
 	if err != nil {
 		klog.Printf("rdServeEmbededDir error= %v\n", err)
@@ -48,6 +54,18 @@ func (router *Router) EmbededStatics(pathLocalDir string, embeded embed.FS, webP
 	toembed_root := http.FileServer(http.FS(toembed_dir))
 	router.GET(webPath+"*", func(c *Context) {
 		http.StripPrefix(webPath, toembed_root).ServeHTTP(c.ResponseWriter, c.Request)
+	})
+}
+
+func (router *Router) ServeLocalFile(file, endpoint, contentType string) {
+	router.GET(endpoint, func(c *Context) {
+		c.ServeFile(contentType, endpoint)
+	})
+}
+
+func (router *Router) ServeEmbededFile(file []byte, endpoint, contentType string) {
+	router.GET(endpoint, func(c *Context) {
+		c.ServeEmbededFile(contentType, file)
 	})
 }
 
