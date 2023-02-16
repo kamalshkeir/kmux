@@ -57,6 +57,7 @@ type Route struct {
 	WsHandler
 	Clients         map[string]*ws.Conn
 	AllowedOrigines []string
+	Docs            *DocsRoute
 }
 
 // New Create New Router from env file default: '.env'
@@ -71,9 +72,27 @@ func New() *Router {
 }
 
 // handle a route
-func (router *Router) handle(method int, pattern string, handler Handler, wshandler WsHandler, allowed []string) {
+func (router *Router) handle(method int, pattern string, handler Handler, wshandler WsHandler, allowed []string) *Route {
 	re := regexp.MustCompile(adaptParams(pattern))
-	route := Route{Method: methods[method], Pattern: re, Handler: handler, WsHandler: wshandler, Clients: nil, AllowedOrigines: []string{}}
+	route := Route{}
+	route.Method = methods[method]
+	route.Pattern = re
+	route.Handler = handler
+	route.WsHandler = wshandler
+	route.AllowedOrigines = []string{}
+	route.Clients = nil
+	if withDocs {
+		route.Docs = &DocsRoute{
+			Pattern:     pattern,
+			Summary:     "A " + methods[method] + " request on " + pattern,
+			Description: "A " + methods[method] + " request on " + pattern,
+			Method:      strings.ToLower(methods[method]),
+			Accept:      "json",
+			Produce:     "json",
+			Params:      []string{},
+		}
+	}
+
 	if len(allowed) > 0 && method != GET && method != HEAD && method != OPTIONS {
 		route.AllowedOrigines = append(route.AllowedOrigines, allowed...)
 	}
@@ -85,7 +104,7 @@ func (router *Router) handle(method int, pattern string, handler Handler, wshand
 	}
 	if len(router.Routes[method]) == 0 {
 		router.Routes[method] = append(router.Routes[method], route)
-		return
+		return &route
 	}
 	for i, rt := range router.Routes[method] {
 		if rt.Pattern.String() == re.String() {
@@ -93,6 +112,7 @@ func (router *Router) handle(method int, pattern string, handler Handler, wshand
 		}
 	}
 	router.Routes[method] = append(router.Routes[method], route)
+	return &route
 }
 
 // WithPprof enable std library pprof at /debug/pprof, prefix default to 'debug'
@@ -148,19 +168,19 @@ func (router *Router) Group(prefix string) *GroupRouter {
 }
 
 // GET handle GET to a route
-func (gr *GroupRouter) GET(pattern string, handler Handler) {
+func (gr *GroupRouter) GET(pattern string, handler Handler) *Route {
 	if !strings.HasPrefix(pattern, "/") {
 		pattern = "/" + pattern
 	}
-	gr.Router.handle(GET, gr.Group+pattern, handler, nil, nil)
+	return gr.Router.handle(GET, gr.Group+pattern, handler, nil, nil)
 }
 
 // GET handle GET to a route
-func (router *Router) GET(pattern string, handler Handler) {
+func (router *Router) GET(pattern string, handler Handler) *Route {
 	if !strings.HasPrefix(pattern, "/") {
 		pattern = "/" + pattern
 	}
-	router.handle(GET, pattern, handler, nil, nil)
+	return router.handle(GET, pattern, handler, nil, nil)
 }
 
 // HandlerFunc support standard library http.HandlerFunc
@@ -191,7 +211,7 @@ func (router *Router) HandlerFunc(method string, pattern string, handler http.Ha
 }
 
 // HandlerFunc support standard library http.HandlerFunc
-func (gr *GroupRouter) HandlerFunc(method string, pattern string, handler http.HandlerFunc, allowed ...string) {
+func (gr *GroupRouter) HandlerFunc(method string, pattern string, handler http.HandlerFunc, allowed ...string) *Route {
 	if !strings.HasPrefix(pattern, "/") {
 		pattern = "/" + pattern
 	}
@@ -210,15 +230,16 @@ func (gr *GroupRouter) HandlerFunc(method string, pattern string, handler http.H
 	switch method {
 	case "*", "all", "ALL":
 		for _, smethod := range mm {
-			gr.Router.handle(smethod, gr.Group+pattern, func(c *Context) { handler.ServeHTTP(c.ResponseWriter, c.Request) }, nil, allowed)
+			return gr.Router.handle(smethod, gr.Group+pattern, func(c *Context) { handler.ServeHTTP(c.ResponseWriter, c.Request) }, nil, allowed)
 		}
 	default:
-		gr.Router.handle(meth, gr.Group+pattern, func(c *Context) { handler.ServeHTTP(c.ResponseWriter, c.Request) }, nil, allowed)
+		return gr.Router.handle(meth, gr.Group+pattern, func(c *Context) { handler.ServeHTTP(c.ResponseWriter, c.Request) }, nil, allowed)
 	}
+	return nil
 }
 
 // HandlerFunc support standard library http.HandlerFunc
-func (router *Router) Handle(method string, pattern string, handler Handler, allowed ...string) {
+func (router *Router) Handle(method string, pattern string, handler Handler, allowed ...string) *Route {
 	if !strings.HasPrefix(pattern, "/") {
 		pattern = "/" + pattern
 	}
@@ -237,14 +258,15 @@ func (router *Router) Handle(method string, pattern string, handler Handler, all
 	switch method {
 	case "*", "all", "ALL":
 		for _, smethod := range mm {
-			router.handle(smethod, pattern, handler, nil, allowed)
+			return router.handle(smethod, pattern, handler, nil, allowed)
 		}
 	default:
-		router.handle(meth, pattern, handler, nil, allowed)
+		return router.handle(meth, pattern, handler, nil, allowed)
 	}
+	return nil
 }
 
-func (gr *GroupRouter) Handle(method string, pattern string, handler Handler, allowed ...string) {
+func (gr *GroupRouter) Handle(method string, pattern string, handler Handler, allowed ...string) *Route {
 	if !strings.HasPrefix(pattern, "/") {
 		pattern = "/" + pattern
 	}
@@ -263,97 +285,98 @@ func (gr *GroupRouter) Handle(method string, pattern string, handler Handler, al
 	switch method {
 	case "*", "all", "ALL":
 		for _, smethod := range mm {
-			gr.Router.handle(smethod, gr.Group+pattern, handler, nil, allowed)
+			return gr.Router.handle(smethod, gr.Group+pattern, handler, nil, allowed)
 		}
 	default:
-		gr.Router.handle(meth, gr.Group+pattern, handler, nil, allowed)
+		return gr.Router.handle(meth, gr.Group+pattern, handler, nil, allowed)
 	}
+	return nil
 }
 
 // POST handle POST to a route
-func (router *Router) POST(pattern string, handler Handler, allowed_origines ...string) {
+func (router *Router) POST(pattern string, handler Handler, allowed_origines ...string) *Route {
 	if !strings.HasPrefix(pattern, "/") {
 		pattern = "/" + pattern
 	}
-	router.handle(POST, pattern, handler, nil, allowed_origines)
+	return router.handle(POST, pattern, handler, nil, allowed_origines)
 }
 
-func (gr *GroupRouter) POST(pattern string, handler Handler, allowed_origines ...string) {
+func (gr *GroupRouter) POST(pattern string, handler Handler, allowed_origines ...string) *Route {
 	if !strings.HasPrefix(pattern, "/") {
 		pattern = "/" + pattern
 	}
-	gr.Router.handle(POST, gr.Group+pattern, handler, nil, allowed_origines)
+	return gr.Router.handle(POST, gr.Group+pattern, handler, nil, allowed_origines)
 }
 
 // PUT handle PUT to a route
-func (router *Router) PUT(pattern string, handler Handler, allowed_origines ...string) {
+func (router *Router) PUT(pattern string, handler Handler, allowed_origines ...string) *Route {
 	if !strings.HasPrefix(pattern, "/") {
 		pattern = "/" + pattern
 	}
-	router.handle(PUT, pattern, handler, nil, allowed_origines)
+	return router.handle(PUT, pattern, handler, nil, allowed_origines)
 }
 
-func (gr *GroupRouter) PUT(pattern string, handler Handler, allowed_origines ...string) {
+func (gr *GroupRouter) PUT(pattern string, handler Handler, allowed_origines ...string) *Route {
 	if !strings.HasPrefix(pattern, "/") {
 		pattern = "/" + pattern
 	}
-	gr.Router.handle(PUT, gr.Group+pattern, handler, nil, allowed_origines)
+	return gr.Router.handle(PUT, gr.Group+pattern, handler, nil, allowed_origines)
 }
 
 // PATCH handle PATCH to a route
-func (router *Router) PATCH(pattern string, handler Handler, allowed_origines ...string) {
+func (router *Router) PATCH(pattern string, handler Handler, allowed_origines ...string) *Route {
 	if !strings.HasPrefix(pattern, "/") {
 		pattern = "/" + pattern
 	}
-	router.handle(PATCH, pattern, handler, nil, allowed_origines)
+	return router.handle(PATCH, pattern, handler, nil, allowed_origines)
 }
-func (gr *GroupRouter) PATCH(pattern string, handler Handler, allowed_origines ...string) {
+func (gr *GroupRouter) PATCH(pattern string, handler Handler, allowed_origines ...string) *Route {
 	if !strings.HasPrefix(pattern, "/") {
 		pattern = "/" + pattern
 	}
-	gr.Router.handle(PATCH, gr.Group+pattern, handler, nil, allowed_origines)
+	return gr.Router.handle(PATCH, gr.Group+pattern, handler, nil, allowed_origines)
 }
 
 // DELETE handle DELETE to a route
-func (router *Router) DELETE(pattern string, handler Handler, allowed_origines ...string) {
+func (router *Router) DELETE(pattern string, handler Handler, allowed_origines ...string) *Route {
 	if !strings.HasPrefix(pattern, "/") {
 		pattern = "/" + pattern
 	}
-	router.handle(DELETE, pattern, handler, nil, allowed_origines)
+	return router.handle(DELETE, pattern, handler, nil, allowed_origines)
 }
-func (gr *GroupRouter) DELETE(pattern string, handler Handler, allowed_origines ...string) {
+func (gr *GroupRouter) DELETE(pattern string, handler Handler, allowed_origines ...string) *Route {
 	if !strings.HasPrefix(pattern, "/") {
 		pattern = "/" + pattern
 	}
-	gr.Router.handle(DELETE, gr.Group+pattern, handler, nil, allowed_origines)
+	return gr.Router.handle(DELETE, gr.Group+pattern, handler, nil, allowed_origines)
 }
 
 // HEAD handle HEAD to a route
-func (router *Router) HEAD(pattern string, handler Handler, allowed_origines ...string) {
+func (router *Router) HEAD(pattern string, handler Handler, allowed_origines ...string) *Route {
 	if !strings.HasPrefix(pattern, "/") {
 		pattern = "/" + pattern
 	}
-	router.handle(HEAD, pattern, handler, nil, nil)
+	return router.handle(HEAD, pattern, handler, nil, nil)
 }
-func (gr *GroupRouter) HEAD(pattern string, handler Handler, allowed_origines ...string) {
+func (gr *GroupRouter) HEAD(pattern string, handler Handler, allowed_origines ...string) *Route {
 	if !strings.HasPrefix(pattern, "/") {
 		pattern = "/" + pattern
 	}
-	gr.Router.handle(HEAD, gr.Group+pattern, handler, nil, nil)
+	return gr.Router.handle(HEAD, gr.Group+pattern, handler, nil, nil)
 }
 
 // OPTIONS handle OPTIONS to a route
-func (router *Router) OPTIONS(pattern string, handler Handler, allowed_origines ...string) {
+func (router *Router) OPTIONS(pattern string, handler Handler, allowed_origines ...string) *Route {
 	if !strings.HasPrefix(pattern, "/") {
 		pattern = "/" + pattern
 	}
-	router.handle(OPTIONS, pattern, handler, nil, nil)
+	return router.handle(OPTIONS, pattern, handler, nil, nil)
 }
-func (gr *GroupRouter) OPTIONS(pattern string, handler Handler, allowed_origines ...string) {
+func (gr *GroupRouter) OPTIONS(pattern string, handler Handler, allowed_origines ...string) *Route {
 	if !strings.HasPrefix(pattern, "/") {
 		pattern = "/" + pattern
 	}
-	gr.Router.handle(OPTIONS, gr.Group+pattern, handler, nil, nil)
+	return gr.Router.handle(OPTIONS, gr.Group+pattern, handler, nil, nil)
 }
 
 // WS handle WS connection on a pattern

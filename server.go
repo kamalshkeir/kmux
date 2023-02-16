@@ -57,14 +57,30 @@ func (router *Router) Run(addr string) {
 
 	// Listen and serve
 	go func() {
-		klog.Printfs("mgrunning on http://%s\n", ADDRESS)
 		if err := router.Server.ListenAndServe(); err != http.ErrServerClosed {
 			klog.Printf("rdUnable to shutdown the server : %v\n", err)
+			os.Exit(1)
 		} else {
 			klog.Printfs("grServer Off!\n")
 		}
 	}()
 
+	if GenerateDocs {
+		DocsGeneralDefaults.Host = ADDRESS
+		for method, routes := range router.Routes {
+			if method != SSE && method != WS {
+				for _, r := range routes {
+					if r.Docs.Triggered {
+						docsPatterns.Set(r.Docs.Pattern, r)
+					}
+				}
+			}
+		}
+		GenerateGoDocsComments()
+		GenerateJsonDocs()
+		OnDocsGenerationReady()
+	}
+	klog.Printfs("mgrunning on http://%s\n", ADDRESS)
 	// graceful Shutdown server
 	router.gracefulShutdown()
 }
@@ -97,7 +113,21 @@ func (router *Router) RunTLS(addr, cert, certKey string) {
 			klog.Printfs("grServer Off!\n")
 		}
 	}()
-
+	if GenerateDocs {
+		DocsGeneralDefaults.Host = ADDRESS
+		for method, routes := range router.Routes {
+			if method != SSE && method != WS {
+				for _, r := range routes {
+					if r.Docs.Triggered {
+						docsPatterns.Set(r.Docs.Pattern, r)
+					}
+				}
+			}
+		}
+		GenerateGoDocsComments()
+		GenerateJsonDocs()
+		OnDocsGenerationReady()
+	}
 	router.gracefulShutdown()
 }
 
@@ -141,7 +171,21 @@ func (router *Router) RunAutoTLS(domainName string, subDomains ...string) {
 			klog.Printf("grServer Off !\n")
 		}
 	}()
-
+	if GenerateDocs {
+		DocsGeneralDefaults.Host = ADDRESS
+		for method, routes := range router.Routes {
+			if method != SSE && method != WS {
+				for _, r := range routes {
+					if r.Docs.Triggered {
+						docsPatterns.Set(r.Docs.Pattern, r)
+					}
+				}
+			}
+		}
+		GenerateGoDocsComments()
+		GenerateJsonDocs()
+		OnDocsGenerationReady()
+	}
 	router.gracefulShutdown()
 }
 
