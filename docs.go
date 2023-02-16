@@ -84,7 +84,7 @@ type DocsOut struct {
 func (router *Router) WithDocs(generate bool, handlerMiddlewares ...func(handler Handler) Handler) *Router {
 	withDocs = true
 	GenerateDocs = generate
-	if !swagFound {
+	if !swagFound && generate {
 		err := CheckAndInstallSwagger()
 		if klog.CheckError(err) {
 			return router
