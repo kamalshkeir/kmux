@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/kamalshkeir/klog"
-	"github.com/kamalshkeir/kmap"
 )
 
 var (
@@ -20,7 +19,7 @@ var (
 	GenerateDocs = false
 	DocsOutJson  = "."
 	DocsOutGo    = "kmuxdocs/kmuxdocs.go"
-	docsPatterns *kmap.SafeMap[string, Route]
+	docsPatterns []Route
 )
 
 var DocsGeneralDefaults = DocsGeneralInfo{
@@ -90,7 +89,7 @@ func (router *Router) WithDocs(generate bool, handlerMiddlewares ...func(handler
 			return router
 		}
 	}
-	docsPatterns = kmap.New[string, Route](false)
+	docsPatterns = []Route{}
 	return router
 }
 
@@ -249,7 +248,7 @@ func GenerateGoDocsComments(pkgName ...string) {
 		return
 	}
 
-	docsPatterns.Range(func(key string, route Route) {
+	for _, route := range docsPatterns {
 		if err := tmpl.Execute(file, route); err != nil {
 			fmt.Println("error generate kmux docs on execute:", err)
 			return
@@ -287,7 +286,8 @@ func GenerateGoDocsComments(pkgName ...string) {
 		}
 		file.WriteString("// @Router       " + route.Docs.Pattern + "  [" + route.Docs.Method + "]\n")
 		file.WriteString("func _(){}\n\n")
-	})
+	}
+
 }
 
 func (router *Router) ServeDirWithMiddlewares(pathToDir string, onEndpoint string, handlerMiddlewares ...func(handler Handler) Handler) {

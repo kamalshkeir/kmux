@@ -71,7 +71,7 @@ func (router *Router) Run(addr string) {
 			if method != SSE && method != WS {
 				for _, r := range routes {
 					if r.Docs != nil && r.Docs.Triggered {
-						docsPatterns.Set(r.Docs.Pattern, r)
+						docsPatterns = append(docsPatterns, r)
 					}
 				}
 			}
@@ -119,7 +119,7 @@ func (router *Router) RunTLS(addr, cert, certKey string) {
 			if method != SSE && method != WS {
 				for _, r := range routes {
 					if r.Docs != nil && r.Docs.Triggered {
-						docsPatterns.Set(r.Docs.Pattern, r)
+						docsPatterns = append(docsPatterns, r)
 					}
 				}
 			}
@@ -177,7 +177,7 @@ func (router *Router) RunAutoTLS(domainName string, subDomains ...string) {
 			if method != SSE && method != WS {
 				for _, r := range routes {
 					if r.Docs != nil && r.Docs.Triggered {
-						docsPatterns.Set(r.Docs.Pattern, r)
+						docsPatterns = append(docsPatterns, r)
 					}
 				}
 			}
