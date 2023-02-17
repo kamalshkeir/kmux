@@ -78,6 +78,7 @@ type DocsOut struct {
 	TypeObjectOrArray string
 	TypePath          string
 	Value             string
+	Extra             string
 }
 
 func (router *Router) WithDocs(generate bool, handlerMiddlewares ...func(handler Handler) Handler) *Router {
@@ -143,7 +144,7 @@ func (r *Route) Produce(produce string) *Route {
 	return r
 }
 
-// In must be like "name  in  type  required  desc" or you can use kmux.DocsParam.String() method
+// In must be like "name  in  typePath  required  'desc'" or you can use kmux.DocsIn.String() method
 func (r *Route) In(docsParam ...string) *Route {
 	if r.Docs == nil {
 		klog.Printf("missing app.WithDocs before\n")
@@ -157,7 +158,7 @@ func (r *Route) In(docsParam ...string) *Route {
 	return r
 }
 
-// Out must be like "200  object/array/string  app1.Account/string  'okifstring'" or you can use kmux.DocsResponse.String() method
+// Out must be like "200  {object}/{array}/{string}  app1.Account/string  'okifstring'" or you can use kmux.DocsOut.String() method
 func (r *Route) Out(sucessResponse string, failureResponses ...string) *Route {
 	if r.Docs == nil {
 		klog.Printf("missing app.WithDocs before\n")
@@ -313,6 +314,14 @@ func (router *Router) ServeDirWithMiddlewares(pathToDir string, onEndpoint strin
 }
 
 func (dp DocsIn) String() string {
+	if dp.Name != "" {
+		dp.Name = strings.ReplaceAll(dp.Name, " ", "")
+	} else {
+		dp.Name = "notset"
+	}
+	if dp.Type == "" {
+		dp.Type = "notset"
+	}
 	return dp.Name + " " + dp.In + " " + dp.Type + " " + strconv.FormatBool(dp.Required) + " \"" + dp.Description + "\" "
 }
 
@@ -320,6 +329,9 @@ func (dr DocsOut) String() string {
 	st := dr.StatusCode + " {" + dr.TypeObjectOrArray + "} " + dr.TypePath
 	if dr.Value != "" {
 		st += " " + dr.Value
+	}
+	if dr.Extra != "" {
+		st += " " + dr.Extra
 	}
 	return strings.ReplaceAll(st, "'", "\"")
 }
