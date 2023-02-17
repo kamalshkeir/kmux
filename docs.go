@@ -260,12 +260,10 @@ func GenerateGoDocsComments(pkgName ...string) {
 			for i := range sp {
 				if strings.Contains(sp[i], ":") {
 					if sp[i][0] == ':' {
-						sp[i] = sp[i][1:]
+						sp[i] = "{" + sp[i][1:] + "}"
 					} else {
 						spp := strings.Split(sp[i], ":")
-						if len(spp) > 1 {
-							sp[i] = spp[1]
-						}
+						sp[i] = "{" + spp[0] + "}"
 					}
 					route.Docs.Pattern = strings.Join(sp, "/")
 				}
