@@ -2,7 +2,7 @@
 
 # Install
 ```sh
-go get -u github.com/kamalshkeir/kmux@v1.8.8
+go get -u github.com/kamalshkeir/kmux@v1.8.9
 ```
 
 ```go
@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	app := kmux.New()
+	app := kmux.New().WithDocs(true) // enable /docs 
 
     // use global middlewares
     app.Use(kmux.Gzip(),kmux.Recovery(),kmux.Limiter(),kmux.Logs())

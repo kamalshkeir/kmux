@@ -203,6 +203,17 @@ func GenerateGoDocsComments(pkgName ...string) {
 	}
 	// create directories if they don't exist
 	os.MkdirAll(DocsOutGo[:len(DocsOutGo)-len("/"+filepath.Base(DocsOutGo))], 0755)
+	sp := strings.Split(DocsOutGo, "/")
+	typesFolder := strings.Replace(DocsOutGo, sp[len(sp)-1], "types.go", 1)
+	if _, err := os.Stat(typesFolder); err != nil {
+		file, err := os.Create(typesFolder)
+		if err != nil {
+			panic(err)
+		}
+		_, err = file.WriteString(kmuxdocsTypes)
+		klog.CheckError(err)
+		defer file.Close()
+	}
 	file, err := os.Create(DocsOutGo)
 	if err != nil {
 		panic(err)
@@ -335,3 +346,26 @@ func (dr DocsOut) String() string {
 	}
 	return strings.ReplaceAll(st, "'", "\"")
 }
+
+var kmuxdocsTypes = `package kmuxdocs
+
+import "time"
+
+type DocsSuccess struct {
+	Success string
+}
+
+type DocsError struct {
+	Error string
+}
+
+type DocsUser struct {
+	Id        int        
+	Uuid      string     
+	Email     string     
+	Password  string     
+	IsAdmin   bool       
+	Image     string     
+	CreatedAt *time.Time 
+}
+`
