@@ -210,7 +210,7 @@ func GenerateGoDocsComments(pkgName ...string) {
 		if err != nil {
 			panic(err)
 		}
-		_, err = file.WriteString(kmuxdocsTypes)
+		_, err = file.WriteString(fmt.Sprintf(kmuxdocsTypes, "`json:\"is_admin\"`", "`json:\"created_at\"`"))
 		klog.CheckError(err)
 		defer file.Close()
 	}
@@ -364,8 +364,8 @@ type DocsUser struct {
 	Uuid      string     
 	Email     string     
 	Password  string     
-	IsAdmin   bool       
+	IsAdmin   bool        %s
 	Image     string     
-	CreatedAt *time.Time 
+	CreatedAt *time.Time  %s
 }
 `
