@@ -277,7 +277,7 @@ func GenerateGoDocsComments(pkgName ...string) {
 		if route.Docs.Response != "" {
 			file.WriteString("// @Success      " + route.Docs.Response + "\n")
 		} else {
-			file.WriteString("// @Success      200 {{string}} string \"ok\"\n")
+			file.WriteString("// @Success      200 {string} string \"ok\"\n")
 		}
 		if len(route.Docs.FailureResponses) > 0 {
 			for _, res := range route.Docs.FailureResponses {
