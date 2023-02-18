@@ -496,7 +496,7 @@ func WrapRegexParam(name, typeToValidate string) string {
 	case "any":
 		wrappedString = `(?P<` + name + `>[^\/]+)`
 	default:
-		wrappedString = `(?P<` + name + `>[a-z0-9]+(?:-[a-z0-9]+)*)`
+		wrappedString = `(?P<` + name + `>\w+(?:-\w+)*)`
 	}
 	return wrappedString
 }
@@ -508,7 +508,7 @@ func adaptParams(url string) string {
 		for i, elem := range urlElements {
 			// named types
 			if elem[0] == ':' {
-				urlElements[i] = `(?P<` + elem[1:] + `>[a-z0-9]+(?:-[a-z0-9]+)*)`
+				urlElements[i] = `(?P<` + elem[1:] + `>\w+(?:-\w+)*)`
 			} else if strings.Contains(elem, ":") {
 				nameType := strings.Split(elem, ":")
 				name := nameType[0]

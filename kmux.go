@@ -73,9 +73,7 @@ func New() *Router {
 
 // handle a route
 func (router *Router) handle(method int, pattern string, handler Handler, wshandler WsHandler, allowed []string) *Route {
-	if strings.HasSuffix(pattern, "/") {
-		pattern = pattern[:len(pattern)-1]
-	}
+	pattern = strings.TrimSuffix(pattern, "/")
 	re := regexp.MustCompile(adaptParams(pattern))
 	route := Route{}
 	route.Method = methods[method]
