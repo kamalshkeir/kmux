@@ -489,14 +489,12 @@ func GetParams(r *http.Request) (map[string]string, bool) {
 func WrapRegexParam(name, typeToValidate string) string {
 	var wrappedString string
 	switch typeToValidate {
-	case "str", "string":
-		wrappedString = `(?P<` + name + `>\w+)`
-	case "int", "num":
-		wrappedString = `(?P<` + name + `>\d+)`
-	case "slug":
-		wrappedString = `(?P<` + name + `>[a-z0-9]+(?:-[a-z0-9]+)*)`
+	case "int":
+		wrappedString = `(?P<` + name + `>\d+(?:-\d+)*)`
 	case "float":
-		wrappedString = `(?P<` + name + `>[-+]?([0-9]*\.[0-9]+|[0-9]+))`
+		wrappedString = `(?P<` + name + `>[+-]?([0-9]*[.])?[0-9]+(?:[+-]?([0-9]*[.])?[0-9]+)*)`
+	case "any":
+		wrappedString = `(?P<` + name + `>[^\/]+)`
 	default:
 		wrappedString = `(?P<` + name + `>[a-z0-9]+(?:-[a-z0-9]+)*)`
 	}
@@ -504,16 +502,13 @@ func WrapRegexParam(name, typeToValidate string) string {
 }
 
 func adaptParams(url string) string {
-	if url[0] == 'r' && url[1] == 'e' && url[2] == 'g' && url[3] == ':' {
-		return url[4:]
-	}
 	if strings.Contains(url, ":") {
 		urlElements := strings.Split(url, "/")
 		urlElements = urlElements[1:]
 		for i, elem := range urlElements {
 			// named types
 			if elem[0] == ':' {
-				urlElements[i] = `(?P<` + elem[1:] + `>\w+)`
+				urlElements[i] = `(?P<` + elem[1:] + `>[a-z0-9]+(?:-[a-z0-9]+)*)`
 			} else if strings.Contains(elem, ":") {
 				nameType := strings.Split(elem, ":")
 				name := nameType[0]
