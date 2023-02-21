@@ -160,7 +160,7 @@ func (c *Context) DeleteCookie(key string)
 func (r *Router) Embed(staticDir *embed.FS, templateDir *embed.FS)
 func (router *Router) NewFuncMap(funcName string, function any)
 func (router *Router) LocalStatics(dirPath, webPath string)
-func (router *Router) EmbededStatics(pathLocalDir string, embeded embed.FS, webPath string)
+func (router *Router) EmbededStatics(embeded embed.FS, pathLocalDir, webPath string)
 func (router *Router) LocalTemplates(pathToDir string) error
 func (router *Router) EmbededTemplates(template_embed embed.FS, rootDir string) error
 ```

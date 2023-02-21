@@ -9,9 +9,9 @@ import (
 
 type WsContext struct {
 	*Router
-	Ws     *ws.Conn
-	Params map[string]string
-	Route
+	Ws        *ws.Conn
+	CtxParams Params
+	*Route
 	Request *http.Request
 }
 
@@ -22,6 +22,15 @@ func (c *WsContext) ReceiveText() (string, error) {
 		return "", err
 	}
 	return string(msgByte), nil
+}
+
+func (c *WsContext) Param(paramName string) string {
+	for _, v := range c.CtxParams {
+		if v.Key == paramName {
+			return v.Value
+		}
+	}
+	return ""
 }
 
 // ReceiveJson receive json from ws and disconnect when stop receiving

@@ -16,28 +16,20 @@ import (
 	"github.com/kamalshkeir/klog"
 )
 
-var (
-	MultipartSize          = 10 << 20
-	beforeRenderHtml       = map[string]func(reqCtx context.Context, data *map[string]any){}
-	beforeRenderHtmlSetted = false
-)
-
-type M map[string]any
-type ContextKey string
-
 // BeforeRenderHtml executed before every html render, you can use reqCtx.Value(key).(type.User) for example and add data to templates globaly
 func BeforeRenderHtml(uniqueName string, fn func(reqCtx context.Context, data *map[string]any)) {
 	beforeRenderHtml[uniqueName] = fn
 	beforeRenderHtmlSetted = true
 }
 
-// Context is a wrapper of responseWriter, request, and params map
+type ContextKey string
+
 type Context struct {
 	*Router
 	http.ResponseWriter
 	*http.Request
-	CtxParamsMap map[string]string
-	status       int
+	CtxParams Params
+	status    int
 }
 
 // Status set status to context, will not be writed to header
@@ -47,15 +39,20 @@ func (c *Context) Status(code int) *Context {
 }
 
 func (c *Context) ParamsMap() map[string]string {
-	return c.CtxParamsMap
+	m := map[string]string{}
+	for _, v := range c.CtxParams {
+		m[v.Key] = v.Value
+	}
+	return m
 }
 
 func (c *Context) Param(paramName string) string {
-	if v, ok := c.CtxParamsMap[paramName]; ok {
-		return v
-	} else {
-		return ""
+	for _, v := range c.CtxParams {
+		if v.Key == paramName {
+			return v.Value
+		}
 	}
+	return ""
 }
 
 // AddHeader Add append a header value to key if exist
@@ -101,17 +98,6 @@ func (c *Context) JsonIndent(data any) {
 	enc := json.NewEncoder(c.ResponseWriter)
 	enc.SetIndent("", "\t")
 	err := enc.Encode(data)
-	klog.CheckError(err)
-}
-
-// Text return text with custom code to the client
-func (c *Context) Text(body string) {
-	c.SetHeader("Content-Type", "text/plain")
-	if c.status == 0 {
-		c.status = 200
-	}
-	c.WriteHeader(c.status)
-	_, err := c.ResponseWriter.Write([]byte(body))
 	klog.CheckError(err)
 }
 
@@ -174,9 +160,20 @@ func (c *Context) User(key ...ContextKey) (any, bool) {
 	}
 }
 
+// Text return text with custom code to the client
+func (c *Context) Text(body string) {
+	c.SetHeader("Content-Type", "text/plain")
+	if c.status == 0 {
+		c.status = 200
+	}
+	c.WriteHeader(c.status)
+	_, err := c.ResponseWriter.Write([]byte(body))
+	klog.CheckError(err)
+}
+
 // Stream send SSE Streaming Response
 func (c *Context) Stream(response string) error {
-	
+
 	var f http.Flusher
 	var ok bool
 	if f, ok = c.ResponseWriter.(http.Flusher); !ok {
@@ -194,7 +191,7 @@ func (c *Context) Stream(response string) error {
 	return nil
 }
 
-func (c *Context) FlushResponseWriterBuffer(response string) bool {
+func (c *Context) Flush(response string) bool {
 	f, ok := c.ResponseWriter.(http.Flusher)
 	if ok {
 		f.Flush()

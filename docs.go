@@ -3,7 +3,6 @@ package kmux
 import (
 	"fmt"
 	"html/template"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -11,15 +10,6 @@ import (
 	"strings"
 
 	"github.com/kamalshkeir/klog"
-)
-
-var (
-	withDocs     = false
-	swagFound    = false
-	GenerateDocs = false
-	DocsOutJson  = "."
-	DocsOutGo    = "kmuxdocs/kmuxdocs.go"
-	docsPatterns []Route
 )
 
 var DocsGeneralDefaults = DocsGeneralInfo{
@@ -35,8 +25,6 @@ var DocsGeneralDefaults = DocsGeneralInfo{
 	LicenseName:    "Apache 2.0",
 	LicenseUrl:     "http://www.apache.org/licenses/LICENSE-2.0.html",
 }
-
-var OnDocsGenerationReady = func() {}
 
 type DocsGeneralInfo struct {
 	Title          string
@@ -81,16 +69,20 @@ type DocsOut struct {
 	Extra             string
 }
 
-func (router *Router) WithDocs(generate bool, handlerMiddlewares ...func(handler Handler) Handler) *Router {
+// WithDocs check and install swagger, and generate json and go docs at the end , after the server run, you can use kmux.OnDocsGenerationReady()
+// genGoDocs default to true if genJsonDocs
+func (router *Router) WithDocs(genJsonDocs bool, genGoDocs ...bool) *Router {
 	withDocs = true
-	GenerateDocs = generate
-	if !swagFound && generate {
+	generateSwaggerJson = genJsonDocs
+	if len(genGoDocs) > 0 && !genGoDocs[0] {
+		generateGoComments = false
+	}
+	if !swagFound && genJsonDocs {
 		err := CheckAndInstallSwagger()
 		if klog.CheckError(err) {
 			return router
 		}
 	}
-	docsPatterns = []Route{}
 	return router
 }
 
@@ -186,13 +178,16 @@ func CheckAndInstallSwagger() error {
 }
 
 func GenerateJsonDocs(entryDocsFile ...string) {
-	if len(entryDocsFile) > 0 {
-		DocsOutGo = entryDocsFile[0]
+	if !generateGoComments {
+		DocsEntryFile = "main.go"
 	}
-	cmd := exec.Command("swag", "init", "-o", DocsOutJson, "-g", DocsOutGo, "--outputTypes", "json")
+	if len(entryDocsFile) > 0 {
+		DocsEntryFile = entryDocsFile[0]
+	}
+	cmd := exec.Command("swag", "init", "-o", DocsOutJson, "-g", DocsEntryFile, "--outputTypes", "json")
 	err := cmd.Run()
 	if err != nil {
-		klog.Printfs("rdcould not generate swagger.json %v\n", err)
+		klog.Printfs("rdcould not generate swagger.json %s : %s\n", err.Error(), "swag init -o "+DocsOutJson+" -g "+DocsEntryFile+" --outputTypes json")
 	}
 }
 
@@ -202,21 +197,23 @@ func GenerateGoDocsComments(pkgName ...string) {
 		pkg = pkgName[0]
 	}
 	// create directories if they don't exist
-	os.MkdirAll(DocsOutGo[:len(DocsOutGo)-len("/"+filepath.Base(DocsOutGo))], 0755)
-	sp := strings.Split(DocsOutGo, "/")
-	typesFolder := strings.Replace(DocsOutGo, sp[len(sp)-1], "types.go", 1)
+	os.MkdirAll(DocsEntryFile[:len(DocsEntryFile)-len("/"+filepath.Base(DocsEntryFile))], 0755)
+	sp := strings.Split(DocsEntryFile, "/")
+	typesFolder := strings.Replace(DocsEntryFile, sp[len(sp)-1], "types.go", 1)
 	if _, err := os.Stat(typesFolder); err != nil {
 		file, err := os.Create(typesFolder)
 		if err != nil {
-			panic(err)
+			klog.Printf("rd%v\n", err)
+			return
 		}
+		defer file.Close()
 		_, err = file.WriteString(fmt.Sprintf(kmuxdocsTypes, "`json:\"is_admin\"`", "`json:\"created_at\"`"))
 		klog.CheckError(err)
-		defer file.Close()
 	}
-	file, err := os.Create(DocsOutGo)
+	file, err := os.Create(DocsEntryFile)
 	if err != nil {
-		panic(err)
+		klog.Printf("rd%v\n", err)
+		return
 	}
 	defer file.Close()
 	file.WriteString("package " + pkg + "\n\n")
@@ -299,29 +296,6 @@ func GenerateGoDocsComments(pkgName ...string) {
 		file.WriteString("// @Router       " + route.Docs.Pattern + "  [" + route.Docs.Method + "]\n")
 		file.WriteString("func _(){}\n\n")
 	}
-
-}
-
-func (router *Router) ServeDirWithMiddlewares(pathToDir string, onEndpoint string, handlerMiddlewares ...func(handler Handler) Handler) {
-	webPath := "docs"
-	if onEndpoint != "" {
-		webPath = onEndpoint
-	}
-	if webPath[0] != '/' {
-		webPath = "/" + webPath
-	}
-	if webPath[len(webPath)-1] == '/' {
-		webPath = webPath[:len(webPath)-1]
-	}
-	handler := func(c *Context) {
-		http.StripPrefix(webPath, http.FileServer(http.Dir(pathToDir))).ServeHTTP(c.ResponseWriter, c.Request)
-	}
-	if len(handlerMiddlewares) > 0 {
-		for _, mid := range handlerMiddlewares {
-			handler = mid(handler)
-		}
-	}
-	router.GET(webPath+"*", handler)
 }
 
 func (dp DocsIn) String() string {

@@ -32,7 +32,6 @@ func Limiter() GlobalMiddlewareFunc {
 	return ratelimiter.LIMITER
 }
 
-// Recovery is a global requests recovery middleware, print error if any panic
 func Recovery() GlobalMiddlewareFunc {
 	return recovery
 }

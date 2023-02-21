@@ -10,7 +10,7 @@ import (
 )
 
 func isSSEConnection(r *http.Request) bool {
-    return r.Header.Get("Accept") == "text/event-stream"
+	return r.Header.Get("Accept") == "text/event-stream"
 }
 
 var GZIP = func(handler http.Handler) http.Handler {

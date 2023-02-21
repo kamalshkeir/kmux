@@ -17,56 +17,40 @@ import (
 
 var allTemplates = template.New("")
 
-func (router *Router) NewFuncMap(funcName string, function any) {
-	if _, ok := functions[funcName]; ok {
-		klog.Printf("rdunable to add %s,already exist !\n", funcName)
-	} else {
-		functions[funcName] = function
-	}
-}
-
-func (router *Router) LocalStatics(dirPath, webPath string) {
+func (router *Router) LocalStatics(dirPath, webPath string, handlerMiddlewares ...func(handler Handler) Handler) {
 	dirPath = filepath.ToSlash(dirPath)
 	if webPath[0] != '/' {
 		webPath = "/" + webPath
 	}
-	if webPath[len(webPath)-1] == '/' {
-		webPath = webPath[:len(webPath)-1]
-	}
-	router.GET(webPath+"*", func(c *Context) {
+	webPath = strings.TrimSuffix(webPath, "/")
+	handler := func(c *Context) {
 		http.StripPrefix(webPath, http.FileServer(http.Dir(dirPath))).ServeHTTP(c.ResponseWriter, c.Request)
-	})
+	}
+	for _, mid := range handlerMiddlewares {
+		handler = mid(handler)
+	}
+	router.GET(webPath+"/*path", handler)
 }
 
-func (router *Router) EmbededStatics(pathLocalDir string, embeded embed.FS, webPath string) {
+func (router *Router) EmbededStatics(embeded embed.FS, pathLocalDir, webPath string, handlerMiddlewares ...func(handler Handler) Handler) {
 	pathLocalDir = filepath.ToSlash(pathLocalDir)
 	if webPath[0] != '/' {
 		webPath = "/" + webPath
 	}
-	if webPath[len(webPath)-1] == '/' {
-		webPath = webPath[:len(webPath)-1]
-	}
+	webPath = strings.TrimSuffix(webPath, "/")
 	toembed_dir, err := fs.Sub(embeded, pathLocalDir)
 	if err != nil {
 		klog.Printf("rdServeEmbededDir error= %v\n", err)
 		return
 	}
 	toembed_root := http.FileServer(http.FS(toembed_dir))
-	router.GET(webPath+"*", func(c *Context) {
+	handler := func(c *Context) {
 		http.StripPrefix(webPath, toembed_root).ServeHTTP(c.ResponseWriter, c.Request)
-	})
-}
-
-func (router *Router) ServeLocalFile(file, endpoint, contentType string) {
-	router.GET(endpoint, func(c *Context) {
-		c.ServeFile(contentType, file)
-	})
-}
-
-func (router *Router) ServeEmbededFile(file []byte, endpoint, contentType string) {
-	router.GET(endpoint, func(c *Context) {
-		c.ServeEmbededFile(contentType, file)
-	})
+	}
+	for _, mid := range handlerMiddlewares {
+		handler = mid(handler)
+	}
+	router.GET(webPath+"/*path", handler)
 }
 
 func (router *Router) LocalTemplates(pathToDir string) error {
@@ -123,6 +107,26 @@ func (router *Router) EmbededTemplates(template_embed embed.FS, rootDir string) 
 	})
 
 	return err
+}
+
+func (router *Router) ServeLocalFile(file, endpoint, contentType string) {
+	router.GET(endpoint, func(c *Context) {
+		c.ServeFile(contentType, file)
+	})
+}
+
+func (router *Router) ServeEmbededFile(file []byte, endpoint, contentType string) {
+	router.GET(endpoint, func(c *Context) {
+		c.ServeEmbededFile(contentType, file)
+	})
+}
+
+func (router *Router) NewFuncMap(funcName string, function any) {
+	if _, ok := functions[funcName]; ok {
+		klog.Printf("rdunable to add %s,already exist !\n", funcName)
+	} else {
+		functions[funcName] = function
+	}
 }
 
 /* FUNC MAPS */

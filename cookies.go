@@ -6,13 +6,6 @@ import (
 	"time"
 )
 
-var (
-	COOKIES_Expires  = 24 * 7 * time.Hour
-	COOKIES_SameSite = http.SameSiteStrictMode
-	COOKIES_HttpOnly = true
-	COOKIES_Secure   = false
-)
-
 func init() {
 	if strings.Contains(PORT, "443") {
 		COOKIES_Secure = true
