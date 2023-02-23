@@ -250,7 +250,7 @@ func (router *Router) WithMetrics(httpHandler http.Handler, path ...string) {
 
 func (r *Router) handle(method, path string, handler Handler, wshandler WsHandler, allowed ...string) *Route {
 	varsCount := uint16(0)
-	if len(path) > 1 && path[len(path)-1] != '/' {
+	if len(path) > 1 && path[len(path)-1] != '/' && !strings.Contains(path, "*") {
 		path += "/"
 	}
 	route := Route{}
@@ -266,7 +266,7 @@ func (r *Router) handle(method, path string, handler Handler, wshandler WsHandle
 			route.Origine = "http://" + route.Origine
 		}
 	}
-	if withDocs {
+	if withDocs && !strings.Contains(path, "*") {
 		route.Docs = &DocsRoute{
 			Pattern:     path,
 			Summary:     "A " + method + " request on " + path,
@@ -305,15 +305,17 @@ func (r *Router) handle(method, path string, handler Handler, wshandler WsHandle
 		root = new(node)
 		r.trees[method] = root
 	}
-	if strings.IndexAny(path, ":*") != -1 {
+	if strings.ContainsAny(path, ":*") {
 		root.addRoute(path, handler, wshandler, allowed)
-	}
-	if v, ok := r.Routes.Get(path); ok {
-		v = append(v, route)
-		r.Routes.Set(path, v)
 	} else {
-		r.Routes.Set(path, []Route{route})
+		if v, ok := r.Routes.Get(path); ok {
+			v = append(v, route)
+			r.Routes.Set(path, v)
+		} else {
+			r.Routes.Set(path, []Route{route})
+		}
 	}
+
 	if paramsCount := countParams(path); paramsCount+varsCount > r.maxParams {
 		r.maxParams = paramsCount + varsCount
 	}
