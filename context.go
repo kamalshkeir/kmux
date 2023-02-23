@@ -276,6 +276,7 @@ func (c *Context) ParseMultipartForm(size ...int64) (formData url.Values, formFi
 	return formData, formFiles
 }
 
+// SaveFile save file to path
 func (*Context) SaveFile(fileheader *multipart.FileHeader, path string) error {
 	return SaveMultipartFile(fileheader, path)
 }
