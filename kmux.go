@@ -259,7 +259,9 @@ func (router *Router) WithMetrics(httpHandler http.Handler, path ...string) {
 
 func (r *Router) handle(method, path string, handler Handler, wshandler WsHandler, allowed ...string) *Route {
 	varsCount := uint16(0)
-	path = strings.TrimSuffix(path, "/")
+	if len(path) > 1 && path[len(path)-1] == '/' {
+		path = path[:len(path)-1]
+	}
 	route := Route{}
 	route.Method = method
 	route.Pattern = path
