@@ -441,8 +441,6 @@ func (r *Router) getAllowedMethods(path, reqMethod string) []string {
 					allowed = append(allowed, method)
 				}
 			}
-		} else {
-			return []string{r.globalAllowed}
 		}
 	} else {
 		for method := range r.trees {

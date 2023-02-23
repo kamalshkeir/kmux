@@ -30,22 +30,17 @@ type Route struct {
 }
 
 type Router struct {
-	Server                 *http.Server
-	NotFound               Handler
-	GlobalOPTIONS          Handler
-	MethodNotAllowed       Handler
-	Routes                 *kmap.SafeMap[string, []Route]
-	contextPool            sync.Pool
-	wscontextPool          sync.Pool
-	paramsPool             sync.Pool
-	maxParams              uint16
-	HandleMethodNotAllowed bool
-	HandleOPTIONS          bool
-	globalAllowed          string
-	RedirectTrailingSlash  bool
-	trees                  map[string]*node
-	RedirectFixedPath      bool
-	PanicHandler           func(http.ResponseWriter, *http.Request, interface{})
+	Server           *http.Server
+	Routes           *kmap.SafeMap[string, []Route]
+	NotFound         Handler
+	GlobalOPTIONS    Handler
+	MethodNotAllowed Handler
+	contextPool      sync.Pool
+	wscontextPool    sync.Pool
+	paramsPool       sync.Pool
+	trees            map[string]*node
+	PanicHandler     func(http.ResponseWriter, *http.Request, interface{})
+	maxParams        uint16
 }
 
 type GroupRouter struct {
@@ -57,11 +52,7 @@ type GroupRouter struct {
 // Path auto-correction, including trailing slashes, is enabled by default.
 func New() *Router {
 	r := &Router{
-		RedirectTrailingSlash:  true,
-		RedirectFixedPath:      true,
-		HandleMethodNotAllowed: true,
-		HandleOPTIONS:          true,
-		Routes:                 kmap.New[string, []Route](false),
+		Routes: kmap.New[string, []Route](false),
 	}
 	if r.contextPool.New == nil {
 		r.contextPool.New = func() interface{} {
@@ -259,8 +250,8 @@ func (router *Router) WithMetrics(httpHandler http.Handler, path ...string) {
 
 func (r *Router) handle(method, path string, handler Handler, wshandler WsHandler, allowed ...string) *Route {
 	varsCount := uint16(0)
-	if len(path) > 1 && path[len(path)-1] == '/' {
-		path = path[:len(path)-1]
+	if len(path) > 1 && path[len(path)-1] != '/' {
+		path += "/"
 	}
 	route := Route{}
 	route.Method = method
@@ -284,6 +275,9 @@ func (r *Router) handle(method, path string, handler Handler, wshandler WsHandle
 			Accept:      "json",
 			Produce:     "json",
 			Params:      []string{},
+		}
+		if len(route.Docs.Pattern) > 1 && route.Docs.Pattern[len(route.Docs.Pattern)-1] == '/' {
+			route.Docs.Pattern = route.Docs.Pattern[:len(route.Docs.Pattern)-1]
 		}
 	}
 	if method == "" {
@@ -310,8 +304,6 @@ func (r *Router) handle(method, path string, handler Handler, wshandler WsHandle
 	if root == nil {
 		root = new(node)
 		r.trees[method] = root
-
-		r.globalAllowed = r.AllowedMethods("*", "")
 	}
 	if strings.IndexAny(path, ":*") != -1 {
 		root.addRoute(path, handler, wshandler, allowed)
@@ -376,8 +368,8 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		defer r.recv(w, req)
 	}
 	path := req.URL.Path
-	if len(path) > 1 && path[len(path)-1] == '/' {
-		path = path[:len(path)-1]
+	if len(path) > 1 && path[len(path)-1] != '/' {
+		path += "/"
 	}
 
 	if req.Method == "GET" {
@@ -490,7 +482,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 				code = http.StatusPermanentRedirect
 			}
 
-			if tsr && r.RedirectTrailingSlash {
+			if tsr {
 				if len(path) > 1 && path[len(path)-1] == '/' {
 					req.URL.Path = path[:len(path)-1]
 				} else {
@@ -501,21 +493,19 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			}
 
 			// fix path
-			if r.RedirectFixedPath {
-				fixedPath, found := root.findInsensitivePath(
-					AdaptPath(path),
-					r.RedirectTrailingSlash,
-				)
-				if found {
-					req.URL.Path = fixedPath
-					http.Redirect(w, req, req.URL.String(), code)
-					return
-				}
+			fixedPath, found := root.findInsensitivePath(
+				AdaptPath(path),
+				true,
+			)
+			if found {
+				req.URL.Path = fixedPath
+				http.Redirect(w, req, req.URL.String(), code)
+				return
 			}
 		}
 	}
 
-	if req.Method == http.MethodOptions && r.HandleOPTIONS {
+	if req.Method == http.MethodOptions {
 		// OPTIONS request
 		if allow := r.AllowedMethods(path, http.MethodOptions); allow != "" {
 			w.Header().Set("Allow", allow)
@@ -529,24 +519,22 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			}
 			return
 		}
-	} else if r.HandleMethodNotAllowed {
-		if allow := r.AllowedMethods(path, req.Method); allow != "" {
-			w.Header().Set("Allow", allow)
-			if r.MethodNotAllowed != nil {
-				ctx := r.contextPool.Get().(*Context)
-				ctx.ResponseWriter = w
-				ctx.Request = req
-				ctx.CtxParams = Params{}
-				r.MethodNotAllowed(ctx)
-				r.contextPool.Put(ctx)
-			} else {
-				http.Error(w,
-					methNothAllowed,
-					http.StatusMethodNotAllowed,
-				)
-			}
-			return
+	} else if allow := r.AllowedMethods(path, req.Method); allow != "" {
+		w.Header().Set("Allow", allow)
+		if r.MethodNotAllowed != nil {
+			ctx := r.contextPool.Get().(*Context)
+			ctx.ResponseWriter = w
+			ctx.Request = req
+			ctx.CtxParams = Params{}
+			r.MethodNotAllowed(ctx)
+			r.contextPool.Put(ctx)
+		} else {
+			http.Error(w,
+				methNothAllowed,
+				http.StatusMethodNotAllowed,
+			)
 		}
+		return
 	}
 
 	if r.NotFound != nil {
