@@ -29,7 +29,7 @@ func (router *Router) LocalStatics(dirPath, webPath string, handlerMiddlewares .
 	for _, mid := range handlerMiddlewares {
 		handler = mid(handler)
 	}
-	router.GET(webPath+"/*path", handler)
+	router.Get(webPath+"/*path", handler)
 }
 
 func (router *Router) EmbededStatics(embeded embed.FS, pathLocalDir, webPath string, handlerMiddlewares ...func(handler Handler) Handler) {
@@ -50,7 +50,7 @@ func (router *Router) EmbededStatics(embeded embed.FS, pathLocalDir, webPath str
 	for _, mid := range handlerMiddlewares {
 		handler = mid(handler)
 	}
-	router.GET(webPath+"/*path", handler)
+	router.Get(webPath+"/*path", handler)
 }
 
 func (router *Router) LocalTemplates(pathToDir string) error {
@@ -110,13 +110,13 @@ func (router *Router) EmbededTemplates(template_embed embed.FS, rootDir string) 
 }
 
 func (router *Router) ServeLocalFile(file, endpoint, contentType string) {
-	router.GET(endpoint, func(c *Context) {
+	router.Get(endpoint, func(c *Context) {
 		c.ServeFile(contentType, file)
 	})
 }
 
 func (router *Router) ServeEmbededFile(file []byte, endpoint, contentType string) {
-	router.GET(endpoint, func(c *Context) {
+	router.Get(endpoint, func(c *Context) {
 		c.ServeEmbededFile(contentType, file)
 	})
 }

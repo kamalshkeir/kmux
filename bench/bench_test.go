@@ -13,14 +13,17 @@ var app = kmux.New()
 //var kmu = kmux.New()
 
 func init() {
-	app.GET("/", func(c *kmux.Context) {
+	app.Get("/", func(c *kmux.Context) {
 		c.Text("ok")
 	})
-	app.GET("/test/:some", func(c *kmux.Context) {
+	app.Get("/test/:some", func(c *kmux.Context) {
 		c.Text("ok " + c.Param("some"))
 	})
-	app.GET("/test/:some/:another", func(c *kmux.Context) {
+	app.Get("/test/:some/:another", func(c *kmux.Context) {
 		c.Text("ok " + c.Param("some") + " " + c.Param("another"))
+	})
+	app.Get("/test/:some/:another/:yetanother", func(c *kmux.Context) {
+		c.Text("ok " + c.Param("some") + " " + c.Param("another") + " " + c.Param("yetanother"))
 	})
 	// kmu.GET("/", func(c *kmux.Context) {
 	// 	c.Text("ok")
@@ -70,6 +73,23 @@ func BenchmarkRouterWithParam(b *testing.B) {
 func BenchmarkRouterWith2Param(b *testing.B) {
 	// Create a new HTTP request
 	req, err := http.NewRequest("GET", "/test/anything/more", nil)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	// Create a new HTTP response recorder
+	recorder := httptest.NewRecorder()
+
+	// Run the benchmark b.N times
+	for i := 0; i < b.N; i++ {
+		// Call the ServeHTTP function with the request and response recorder
+		app.ServeHTTP(recorder, req)
+	}
+}
+
+func BenchmarkRouterWith3Param(b *testing.B) {
+	// Create a new HTTP request
+	req, err := http.NewRequest("GET", "/test/anything/more/yetmore", nil)
 	if err != nil {
 		b.Fatal(err)
 	}

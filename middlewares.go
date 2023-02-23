@@ -12,46 +12,53 @@ import (
 	"time"
 
 	"github.com/kamalshkeir/kmux/gzip"
-
 	"github.com/kamalshkeir/kmux/ratelimiter"
 
 	"github.com/kamalshkeir/klog"
 )
 
-type GlobalMiddlewareFunc func(handler http.Handler) http.Handler
+var midwrs = []func(http.Handler) http.Handler{}
 
-type KmuxMiddlewareFunc interface {
-	func(Handler, string, string) Handler | func(Handler) Handler
-}
-
-func Gzip() GlobalMiddlewareFunc {
+func Gzip() func(http.Handler) http.Handler {
 	return gzip.GZIP
 }
 
-func Limiter() GlobalMiddlewareFunc {
+func Limiter() func(http.Handler) http.Handler {
 	return ratelimiter.LIMITER
 }
 
-func Recovery() GlobalMiddlewareFunc {
-	return recovery
+func Recovery() func(http.Handler) http.Handler {
+	return recov
 }
 
-func recovery(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			err := recover()
-			if err != nil {
-				klog.Printf("rd%v\n", err)
-				jsonBody, _ := json.Marshal(map[string]string{
-					"error": "There was an internal server error",
-				})
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write(jsonBody)
+var Cors = func(allowed ...string) func(http.Handler) http.Handler {
+	for i := range allowed {
+		allowed[i] = strings.ReplaceAll(allowed[i], "localhost", "127.0.0.1")
+		if allowed[i] == "*" {
+			continue
+		}
+		if !strings.HasPrefix(allowed[i], "http") {
+			allowed[i] = "http://" + allowed[i]
+		}
+	}
+	return func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if len(allowed) == 0 {
+				allowed = append(allowed, "*")
 			}
-		}()
-		next.ServeHTTP(w, r)
-	})
+			// Set headers
+			o := strings.Join(allowed, ", ")
+			w.Header().Set("Access-Control-Allow-Origin", o)
+			w.Header().Set("Access-Control-Allow-Headers:", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "*")
+			if r.Method == "OPTIONS" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			// Next
+			h.ServeHTTP(w, r)
+		})
+	}
 }
 
 func BasicAuth(kmuxHandlerFunc Handler, user, pass string) Handler {
@@ -80,16 +87,26 @@ func BasicAuth(kmuxHandlerFunc Handler, user, pass string) Handler {
 	}
 }
 
-func (router *Router) AllowOrigines(origines ...string) {
-	if !corsAdded {
-		midwrs = append(midwrs, cors)
-		corsAdded = true
-	}
-	origineslist = append(origineslist, origines...)
+func recov(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			err := recover()
+			if err != nil {
+				klog.Printf("rd%v\n", err)
+				jsonBody, _ := json.Marshal(map[string]string{
+					"error": "There was an internal server error",
+				})
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write(jsonBody)
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
 }
 
 // Logs middleware log requests, and can execute one optional callback on each request
-func Logs(callback ...func(method, path, remote string, status int, took time.Duration)) GlobalMiddlewareFunc {
+func Logs(callback ...func(method, path, remote string, status int, took time.Duration)) func(http.Handler) http.Handler {
 	return func(handler http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ignored := []string{"/metrics", "sw.js", "favicon", "/static/", "/sse/", "/ws/", "/wss/"}
@@ -151,22 +168,4 @@ func (r *StatusRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 		return hj.Hijack()
 	}
 	return nil, nil, fmt.Errorf("LOGS MIDDLEWARE: http.Hijacker interface is not supported")
-}
-
-var corsAdded = false
-var origineslist = []string{}
-var cors = func(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Set headers
-		o := strings.Join(origineslist, ",")
-		w.Header().Set("Access-Control-Allow-Origin", o)
-		w.Header().Set("Access-Control-Allow-Headers:", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "*")
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-		// Next
-		next.ServeHTTP(w, r)
-	})
 }

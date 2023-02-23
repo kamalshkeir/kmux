@@ -25,7 +25,6 @@ func BeforeRenderHtml(uniqueName string, fn func(reqCtx context.Context, data *m
 type ContextKey string
 
 type Context struct {
-	*Router
 	http.ResponseWriter
 	*http.Request
 	CtxParams Params
@@ -83,9 +82,10 @@ func (c *Context) Json(data any) {
 		c.status = 200
 	}
 	c.WriteHeader(c.status)
-	enc := json.NewEncoder(c.ResponseWriter)
-	err := enc.Encode(data)
-	klog.CheckError(err)
+	by, err := json.Marshal(data)
+	if err == nil {
+		c.ResponseWriter.Write(by)
+	}
 }
 
 // JsonIndent return json indented to the client
@@ -95,10 +95,10 @@ func (c *Context) JsonIndent(data any) {
 		c.status = 200
 	}
 	c.WriteHeader(c.status)
-	enc := json.NewEncoder(c.ResponseWriter)
-	enc.SetIndent("", "\t")
-	err := enc.Encode(data)
-	klog.CheckError(err)
+	by, err := json.MarshalIndent(data, "", " \t")
+	if err == nil {
+		c.ResponseWriter.Write(by)
+	}
 }
 
 // Html return template_name with data to the client
@@ -163,6 +163,16 @@ func (c *Context) User(key ...ContextKey) (any, bool) {
 // Text return text with custom code to the client
 func (c *Context) Text(body string) {
 	c.SetHeader("Content-Type", "text/plain")
+	if c.status == 0 {
+		c.status = 200
+	}
+	c.WriteHeader(c.status)
+	_, err := c.ResponseWriter.Write([]byte(body))
+	klog.CheckError(err)
+}
+
+func (c *Context) TextHtml(body string) {
+	c.SetHeader("Content-Type", "text/html; charset=utf-8")
 	if c.status == 0 {
 		c.status = 200
 	}
@@ -266,9 +276,59 @@ func (c *Context) ParseMultipartForm(size ...int64) (formData url.Values, formFi
 	return formData, formFiles
 }
 
+func (*Context) SaveFile(fileheader *multipart.FileHeader, path string) error {
+	return SaveMultipartFile(fileheader, path)
+}
+
+func SaveMultipartFile(fh *multipart.FileHeader, path string) (err error) {
+	var (
+		f  multipart.File
+		ff *os.File
+	)
+	f, err = fh.Open()
+	if err != nil {
+		return
+	}
+
+	var ok bool
+	if ff, ok = f.(*os.File); ok {
+		if err = f.Close(); err != nil {
+			return
+		}
+		if os.Rename(ff.Name(), path) == nil {
+			return nil
+		}
+
+		// Reopen f for the code below.
+		if f, err = fh.Open(); err != nil {
+			return
+		}
+	}
+
+	defer func() {
+		e := f.Close()
+		if err == nil {
+			err = e
+		}
+	}()
+
+	if ff, err = os.Create(path); err != nil {
+		return
+	}
+	defer func() {
+		e := ff.Close()
+		if err == nil {
+			err = e
+		}
+	}()
+	_, err = copyZeroAlloc(ff, f)
+	return
+}
+
 // UploadFile upload received_filename into folder_out and return url,fileByte,error
 func (c *Context) UploadFile(received_filename, folder_out string, acceptedFormats ...string) (string, []byte, error) {
 	_, formFiles := c.ParseMultipartForm()
+
 	url := ""
 	data := []byte{}
 	for inputName, files := range formFiles {

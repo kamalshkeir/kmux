@@ -198,19 +198,22 @@ func (router *Router) createServerCerts(domainName string, subDomains ...string)
 
 // initAutoServer init the server with midws with tlsConfig
 func (router *Router) initAutoServer(addr string, tlsconf *tls.Config) {
-	var handler http.Handler
-	if len(midwrs) != 0 {
-		handler = midwrs[0](router)
-		for i := 1; i < len(midwrs); i++ {
-			handler = midwrs[i](handler)
+	var h http.Handler
+	if len(midwrs) > 0 {
+		for i := range midwrs {
+			if i == 0 {
+				h = midwrs[0](router)
+			} else {
+				h = midwrs[i](h)
+			}
 		}
 	} else {
-		handler = router
+		h = router
 	}
 	// Setup Server
 	server := http.Server{
 		Addr:         addr,
-		Handler:      handler,
+		Handler:      h,
 		ReadTimeout:  ReadTimeout,
 		WriteTimeout: WriteTimeout,
 		IdleTimeout:  IdleTimeout,
@@ -334,18 +337,22 @@ func (router *Router) initServer(addr string) {
 	if addr != ADDRESS {
 		ADDRESS = addr
 	}
-	var handler http.Handler
-	if len(midwrs) != 0 {
-		handler = midwrs[0](router)
-		for i := 1; i < len(midwrs); i++ {
-			handler = midwrs[i](handler)
+	var h http.Handler
+	if len(midwrs) > 0 {
+		for i := range midwrs {
+			if i == 0 {
+				h = midwrs[0](router)
+			} else {
+				h = midwrs[i](h)
+			}
 		}
 	} else {
-		handler = router
+		h = router
 	}
+
 	server := http.Server{
 		Addr:         addr,
-		Handler:      handler,
+		Handler:      h,
 		ReadTimeout:  ReadTimeout,
 		WriteTimeout: WriteTimeout,
 		IdleTimeout:  IdleTimeout,
@@ -369,17 +376,14 @@ func longestCommonPrefix(a, b string) int {
 	return i
 }
 
-// Search for a wildcard segment and check the name for invalid characters.
+// checkNameAndWildcard check the name for invalid characters.
 // Returns -1 as index, if no wildcard was found.
-func findWildcard(path string) (wilcard string, i int, valid bool) {
-	// Find start
+func checkNameAndWildcard(path string) (wilcard string, i int, valid bool) {
 	for start, c := range []byte(path) {
-		// A wildcard starts with ':' (param) or '*' (catch-all)
 		if c != ':' && c != '*' {
 			continue
 		}
 
-		// Find end and check for invalid characters
 		valid = true
 		for end, c := range []byte(path[start+1:]) {
 			switch c {
@@ -408,7 +412,7 @@ func countParams(path string) uint16 {
 type nodeType uint8
 
 const (
-	static nodeType = iota // default
+	static nodeType = iota
 	root
 	param
 	catchAll
@@ -423,6 +427,7 @@ type node struct {
 	children  []*node
 	handler   Handler
 	wshandler WsHandler
+	orgines   []string
 }
 
 func (n *node) increasePrio(pos int) int {
@@ -442,22 +447,28 @@ func (n *node) increasePrio(pos int) int {
 	return newPos
 }
 
-func (n *node) addRoute(path string, handle Handler, wshandle WsHandler) {
+func (n *node) addRoute(path string, handle Handler, wshandle WsHandler, allowed []string) {
+	for i := range allowed {
+		allowed[i] = strings.ReplaceAll(allowed[i], "localhost", "127.0.0.1")
+		if allowed[i] == "*" {
+			continue
+		}
+		if !strings.HasPrefix(allowed[i], "http") {
+			allowed[i] = "http://" + allowed[i]
+		}
+	}
 	fullPath := path
 	n.prio++
 
 	// Empty tree
 	if n.path == "" && n.indices == "" {
-		n.insertChild(path, fullPath, handle, wshandle)
+		n.insertChild(path, fullPath, handle, wshandle, allowed)
 		n.nodeTypeV = root
 		return
 	}
 
 walk:
 	for {
-		// Find the longest common prefix.
-		// This also implies that the common prefix contains no ':' or '*'
-		// since the existing key can't contain those chars.
 		i := longestCommonPrefix(path, n.path)
 
 		// Split edge
@@ -473,7 +484,6 @@ walk:
 			}
 
 			n.children = []*node{&child}
-			// []byte for proper unicode char conversion, see #65
 			n.indices = string([]byte{n.path[i]})
 			n.path = path[:i]
 			n.handler = nil
@@ -502,11 +512,7 @@ walk:
 						pathSeg = strings.SplitN(pathSeg, "/", 2)[0]
 					}
 					prefix := fullPath[:strings.Index(fullPath, pathSeg)] + n.path
-					klog.Printf("rd'" + pathSeg +
-						"' in new path '" + fullPath +
-						"' conflicts with existing wildcard '" + n.path +
-						"' in existing prefix '" + prefix +
-						"'\n")
+					klog.Printfs("rd'%s' in new path '%s' conflicts with existing wildcard '%s' in existing prefix '%s'\n", pathSeg, fullPath, n.path, prefix)
 					return
 				}
 			}
@@ -538,13 +544,13 @@ walk:
 				n.increasePrio(len(n.indices) - 1)
 				n = child
 			}
-			n.insertChild(path, fullPath, handle, wshandle)
+			n.insertChild(path, fullPath, handle, wshandle, allowed)
 			return
 		}
 
 		// Otherwise add handle to current node
 		if n.handler != nil {
-			klog.Printf("rda handle is already registered for path '" + fullPath + "'\n")
+			klog.Printfs("rda handle is already registered for path '%s'\n", fullPath)
 			return
 		}
 		n.handler = handle
@@ -553,31 +559,29 @@ walk:
 	}
 }
 
-func (n *node) insertChild(path, fullPath string, handle Handler, wshandler WsHandler) {
+func (n *node) insertChild(path, fullPath string, handle Handler, wshandler WsHandler, allowed []string) {
 	for {
 		// Find prefix until first wildcard
-		wildcard, i, valid := findWildcard(path)
+		wildcard, i, valid := checkNameAndWildcard(path)
 		if i < 0 { // No wilcard found
 			break
 		}
 		// The wildcard name must not contain ':' and '*'
 		if !valid {
-			klog.Printf("rdonly one wildcard per path segment is allowed, has: '" +
-				wildcard + "' in path '" + fullPath + "'\n")
+			klog.Printfs("rdonly one wildcard per path segment is allowed, has: '%s' in path '%s'\n", wildcard, fullPath)
 			return
 		}
 
 		// Check if the wildcard has a name
 		if len(wildcard) < 2 {
-			klog.Printf("rdwildcards must be named with a non-empty name in path '" + fullPath + "'\n")
+			klog.Printfs("rdwildcards must be named with a non-empty name in path '%s'\n", fullPath)
 			return
 		}
 
 		// Check if this node has existing children which would be
 		// unreachable if we insert the wildcard here
-		if len(n.children) > 0 {
-			klog.Printf("rdwildcard segment '" + wildcard +
-				"' conflicts with existing children in path '" + fullPath + "'\n")
+		if len(n.children) > 0 && len(wildcard) < 2 {
+			klog.Printfs("rdwildcard segment '%s' conflicts with existing children in path '%s'\n", wildcard, n.children[0].path)
 			return
 		}
 
@@ -616,6 +620,7 @@ func (n *node) insertChild(path, fullPath string, handle Handler, wshandler WsHa
 			} else if wshandler != nil {
 				n.wshandler = wshandler
 			}
+			n.orgines = allowed
 
 			return
 		}
@@ -651,6 +656,7 @@ func (n *node) insertChild(path, fullPath string, handle Handler, wshandler WsHa
 		n.prio++
 		// Second node: node holding the variable
 		child = &node{
+			orgines:   allowed,
 			path:      path[i:],
 			nodeTypeV: catchAll,
 			handler:   handle,
@@ -663,12 +669,13 @@ func (n *node) insertChild(path, fullPath string, handle Handler, wshandler WsHa
 	}
 
 	// If no wildcard was found, simply insert the path and handle
+	n.orgines = allowed
 	n.path = path
 	n.handler = handle
 	n.wshandler = wshandler
 }
 
-func (n *node) search(path string, params func() *Params) (handle Handler, wshandle WsHandler, ps *Params, tsr bool) {
+func (n *node) search(path string, params func() *Params) (handle Handler, wshandle WsHandler, ps *Params, origines []string, tsr bool) {
 walk: // Outer loop for walking the tree
 	for {
 		prefix := n.path
@@ -690,6 +697,7 @@ walk: // Outer loop for walking the tree
 					// Nothing found.
 					// We can recommend to redirect to the same URL without a
 					// trailing slash if a leaf exists for that path.
+					origines = n.orgines
 					tsr = (path == "/" && (n.handler != nil || n.wshandler != nil))
 					return
 				}
@@ -717,7 +725,7 @@ walk: // Outer loop for walking the tree
 							Value: path[:end],
 						}
 					}
-
+					origines = n.orgines
 					// We need to go deeper!
 					if end < len(path) {
 						if len(n.children) > 0 {
@@ -756,6 +764,7 @@ walk: // Outer loop for walking the tree
 							Value: path,
 						}
 					}
+					origines = n.orgines
 					handle = n.handler
 					wshandle = n.wshandler
 					return
@@ -768,6 +777,7 @@ walk: // Outer loop for walking the tree
 		} else if path == prefix {
 			// We should have reached the node containing the handle.
 			// Check if this node has a handle registered.
+			origines = n.orgines
 			if handle = n.handler; handle != nil {
 				return
 			} else if wshandle = n.wshandler; wshandle != nil {

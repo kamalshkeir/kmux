@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/kamalshkeir/kmap"
 	"github.com/kamalshkeir/kmux/ws"
 
 	"github.com/kamalshkeir/klog"
@@ -16,6 +17,7 @@ import (
 
 type Handler func(c *Context)
 type WsHandler func(c *WsContext)
+type M map[string]any
 
 type Route struct {
 	Method  string
@@ -24,6 +26,7 @@ type Route struct {
 	WsHandler
 	Clients map[string]*ws.Conn
 	Docs    *DocsRoute
+	Origine string
 }
 
 type Router struct {
@@ -31,8 +34,9 @@ type Router struct {
 	NotFound               Handler
 	GlobalOPTIONS          Handler
 	MethodNotAllowed       Handler
-	allRoutes              map[string][]Route
+	Routes                 *kmap.SafeMap[string, []Route]
 	contextPool            sync.Pool
+	wscontextPool          sync.Pool
 	paramsPool             sync.Pool
 	maxParams              uint16
 	HandleMethodNotAllowed bool
@@ -52,13 +56,30 @@ type GroupRouter struct {
 // New returns a new initialized Router.
 // Path auto-correction, including trailing slashes, is enabled by default.
 func New() *Router {
-	return &Router{
+	r := &Router{
 		RedirectTrailingSlash:  true,
 		RedirectFixedPath:      true,
 		HandleMethodNotAllowed: true,
 		HandleOPTIONS:          true,
-		allRoutes:              map[string][]Route{},
+		Routes:                 kmap.New[string, []Route](false),
 	}
+	if r.contextPool.New == nil {
+		r.contextPool.New = func() interface{} {
+			return &Context{
+				status:    200,
+				CtxParams: Params{},
+			}
+		}
+	}
+	if r.wscontextPool.New == nil {
+		r.wscontextPool.New = func() interface{} {
+			return &WsContext{
+				Clients:   make(map[string]*ws.Conn),
+				CtxParams: Params{},
+			}
+		}
+	}
+	return r
 }
 
 func (router *Router) Group(prefix string) *GroupRouter {
@@ -76,125 +97,124 @@ func (router *Router) Use(midws ...func(http.Handler) http.Handler) {
 	midwrs = append(midwrs, midws...)
 }
 
-// GET is a shortcut for router.Handle(http.MethodGet, path, handle)
-func (r *Router) GET(path string, handler Handler) *Route {
-	return r.handle(http.MethodGet, path, handler, nil)
+// Get is a shortcut for router.Handle(http.MethodGet, path, handle)
+func (r *Router) Get(path string, handler Handler, allowedOrigine ...string) *Route {
+	return r.handle(http.MethodGet, path, handler, nil, allowedOrigine...)
 }
 
-func (gr *GroupRouter) GET(pattern string, handler Handler) *Route {
+func (gr *GroupRouter) Get(pattern string, handler Handler, allowedOrigine ...string) *Route {
 	if !strings.HasPrefix(pattern, "/") {
 		pattern = "/" + pattern
 	}
-	return gr.Router.handle("GET", gr.Group+pattern, handler, nil)
+	return gr.Router.handle("GET", gr.Group+pattern, handler, nil, allowedOrigine...)
 }
 
-// HEAD is a shortcut for router.Handle(http.MethodHead, path, handle)
-func (r *Router) HEAD(path string, handler Handler) *Route {
-	return r.handle(http.MethodHead, path, handler, nil)
+// Head is a shortcut for router.Handle(http.MethodHead, path, handle)
+func (r *Router) Head(path string, handler Handler, allowedOrigine ...string) *Route {
+	return r.handle(http.MethodHead, path, handler, nil, allowedOrigine...)
 }
 
-func (gr *GroupRouter) HEAD(path string, handler Handler) *Route {
+func (gr *GroupRouter) Head(path string, handler Handler, allowedOrigine ...string) *Route {
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
-	return gr.Router.handle(http.MethodHead, gr.Group+path, handler, nil)
+	return gr.Router.handle(http.MethodHead, gr.Group+path, handler, nil, allowedOrigine...)
 }
 
-// OPTIONS is a shortcut for router.Handle(http.MethodOptions, path, handle)
-func (r *Router) OPTIONS(path string, handler Handler) *Route {
-	return r.handle(http.MethodOptions, path, handler, nil)
+// Options is a shortcut for router.Handle(http.MethodOptions, path, handle)
+func (r *Router) Options(path string, handler Handler, allowedOrigine ...string) *Route {
+	return r.handle(http.MethodOptions, path, handler, nil, allowedOrigine...)
 }
 
-func (gr *GroupRouter) OPTIONS(path string, handler Handler) *Route {
+func (gr *GroupRouter) Options(path string, handler Handler, allowedOrigine ...string) *Route {
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
-	return gr.Router.handle(http.MethodOptions, gr.Group+path, handler, nil)
+	return gr.Router.handle(http.MethodOptions, gr.Group+path, handler, nil, allowedOrigine...)
 }
 
-// POST is a shortcut for router.Handle(http.MethodPost, path, handle)
-func (r *Router) POST(path string, handler Handler) *Route {
-	return r.handle(http.MethodPost, path, handler, nil)
+// Post is a shortcut for router.Handle(http.MethodPost, path, handle)
+func (r *Router) Post(path string, handler Handler, allowedOrigine ...string) *Route {
+	return r.handle(http.MethodPost, path, handler, nil, allowedOrigine...)
 }
 
-func (gr *GroupRouter) POST(path string, handler Handler) *Route {
+func (gr *GroupRouter) Post(path string, handler Handler, allowedOrigine ...string) *Route {
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
-	return gr.Router.handle(http.MethodPost, gr.Group+path, handler, nil)
+	return gr.Router.handle(http.MethodPost, gr.Group+path, handler, nil, allowedOrigine...)
 }
 
-// PUT is a shortcut for router.Handle(http.MethodPut, path, handle)
-func (r *Router) PUT(path string, handler Handler) *Route {
-	return r.handle(http.MethodPut, path, handler, nil)
+// Put is a shortcut for router.Handle(http.MethodPut, path, handle)
+func (r *Router) Put(path string, handler Handler, allowedOrigine ...string) *Route {
+	return r.handle(http.MethodPut, path, handler, nil, allowedOrigine...)
 }
 
-func (gr *GroupRouter) PUT(path string, handler Handler) *Route {
+func (gr *GroupRouter) Put(path string, handler Handler, allowedOrigine ...string) *Route {
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
-	return gr.Router.handle(http.MethodPut, gr.Group+path, handler, nil)
+	return gr.Router.handle(http.MethodPut, gr.Group+path, handler, nil, allowedOrigine...)
 }
 
-// PATCH is a shortcut for router.Handle(http.MethodPatch, path, handle)
-func (r *Router) PATCH(path string, handler Handler) *Route {
-	return r.handle(http.MethodPatch, path, handler, nil)
+// Patch is a shortcut for router.Handle(http.MethodPatch, path, handle)
+func (r *Router) Patch(path string, handler Handler, allowedOrigine ...string) *Route {
+	return r.handle(http.MethodPatch, path, handler, nil, allowedOrigine...)
 }
 
-func (gr *GroupRouter) PATCH(path string, handler Handler) *Route {
+func (gr *GroupRouter) Patch(path string, handler Handler, allowedOrigine ...string) *Route {
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
-	return gr.Router.handle(http.MethodPatch, gr.Group+path, handler, nil)
+	return gr.Router.handle(http.MethodPatch, gr.Group+path, handler, nil, allowedOrigine...)
 }
 
-// DELETE is a shortcut for router.Handle(http.MethodDelete, path, handle)
-func (r *Router) DELETE(path string, handle Handler) *Route {
-	return r.handle(http.MethodDelete, path, handle, nil)
+// Delete is a shortcut for router.Handle(http.MethodDelete, path, handle)
+func (r *Router) Delete(path string, handle Handler, allowedOrigine ...string) *Route {
+	return r.handle(http.MethodDelete, path, handle, nil, allowedOrigine...)
 }
 
-func (gr *GroupRouter) DELETE(path string, handler Handler) *Route {
+func (gr *GroupRouter) Delete(path string, handler Handler, allowedOrigine ...string) *Route {
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
-	return gr.Router.handle(http.MethodDelete, gr.Group+path, handler, nil)
+	return gr.Router.handle(http.MethodDelete, gr.Group+path, handler, nil, allowedOrigine...)
 }
 
-func (r *Router) WS(path string, wshandle WsHandler) *Route {
-	return r.handle("WS", path, nil, wshandle)
+func (r *Router) Ws(path string, wshandle WsHandler, allowedOrigine ...string) *Route {
+	return r.handle("WS", path, nil, wshandle, allowedOrigine...)
 }
 
-func (gr *GroupRouter) WS(path string, handler Handler) *Route {
+func (gr *GroupRouter) Ws(path string, handler Handler, allowedOrigine ...string) {
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
-	return gr.Router.handle("WS", gr.Group+path, handler, nil)
+	gr.Router.handle("WS", gr.Group+path, handler, nil, allowedOrigine...)
 }
 
-func (r *Router) SSE(path string, handler Handler) *Route {
-	return r.GET(path, func(c *Context) {
+func (r *Router) Sse(path string, handler Handler, allowedOrigine ...string) {
+	r.Get(path, func(c *Context) {
 		c.SetHeader("Access-Control-Allow-Origin", "*")
 		c.SetHeader("Access-Control-Allow-Headers", "Content-Type")
 		c.SetHeader("Content-Type", "text/event-stream")
 		c.SetHeader("Cache-Control", "no-cache")
 		c.SetHeader("Connection", "keep-alive")
 		handler(c)
-	})
-
+	}, allowedOrigine...)
 }
 
-func (gr *GroupRouter) SSE(path string, handler Handler) *Route {
+func (gr *GroupRouter) Sse(path string, handler Handler, allowedOrigine ...string) *Route {
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}
-	return gr.Router.GET(gr.Group+path, func(c *Context) {
+	return gr.Router.Get(gr.Group+path, func(c *Context) {
 		c.SetHeader("Access-Control-Allow-Origin", "*")
 		c.SetHeader("Access-Control-Allow-Headers", "Content-Type")
 		c.SetHeader("Content-Type", "text/event-stream")
 		c.SetHeader("Cache-Control", "no-cache")
 		c.SetHeader("Connection", "keep-alive")
 		handler(c)
-	})
+	}, allowedOrigine...)
 }
 
 // WithPprof enable std library pprof at /debug/pprof, prefix default to 'debug'
@@ -222,7 +242,7 @@ func (router *Router) WithPprof(path ...string) {
 			return
 		}
 	}
-	router.GET("/"+path[0]+"/:type", handler)
+	router.Get("/"+path[0]+"/:type", handler)
 }
 
 func (router *Router) WithMetrics(httpHandler http.Handler, path ...string) {
@@ -232,12 +252,12 @@ func (router *Router) WithMetrics(httpHandler http.Handler, path ...string) {
 		path = append(path, "metrics")
 	}
 
-	router.GET("/"+path[0], func(c *Context) {
+	router.Get("/"+path[0], func(c *Context) {
 		httpHandler.ServeHTTP(c.ResponseWriter, c.Request)
 	})
 }
 
-func (r *Router) handle(method, path string, handler Handler, wshandler WsHandler) *Route {
+func (r *Router) handle(method, path string, handler Handler, wshandler WsHandler, allowed ...string) *Route {
 	varsCount := uint16(0)
 	route := Route{}
 	route.Method = method
@@ -245,6 +265,13 @@ func (r *Router) handle(method, path string, handler Handler, wshandler WsHandle
 	route.Handler = handler
 	route.WsHandler = wshandler
 	route.Clients = nil
+	if len(allowed) > 0 {
+		route.Origine = allowed[0]
+		route.Origine = strings.Replace(route.Origine, "localhost", "127.0.0.1", 1)
+		if !strings.HasPrefix(route.Origine, "http") {
+			route.Origine = "http://" + route.Origine
+		}
+	}
 	if withDocs {
 		route.Docs = &DocsRoute{
 			Pattern:     path,
@@ -283,18 +310,19 @@ func (r *Router) handle(method, path string, handler Handler, wshandler WsHandle
 
 		r.globalAllowed = r.AllowedMethods("*", "")
 	}
-	root.addRoute(path, handler, wshandler)
-	if _, ok := r.allRoutes[method]; ok {
-		r.allRoutes[method] = append(r.allRoutes[method], route)
-	} else {
-		r.allRoutes[method] = []Route{route}
+	if strings.IndexAny(path, ":*") != -1 {
+		root.addRoute(path, handler, wshandler, allowed)
 	}
-	// Update maxParams
+	if v, ok := r.Routes.Get(path); ok {
+		v = append(v, route)
+		r.Routes.Set(path, v)
+	} else {
+		r.Routes.Set(path, []Route{route})
+	}
 	if paramsCount := countParams(path); paramsCount+varsCount > r.maxParams {
 		r.maxParams = paramsCount + varsCount
 	}
 
-	// Lazy-init paramsPool alloc func
 	if r.paramsPool.New == nil && r.maxParams > 0 {
 		r.paramsPool.New = func() interface{} {
 			ps := make(Params, 0, r.maxParams)
@@ -302,14 +330,6 @@ func (r *Router) handle(method, path string, handler Handler, wshandler WsHandle
 		}
 	}
 
-	if r.contextPool.New == nil {
-		r.contextPool.New = func() interface{} {
-			return &Context{
-				status:    200,
-				CtxParams: Params{},
-			}
-		}
-	}
 	return &route
 }
 
@@ -327,6 +347,27 @@ func (r *Router) HandlerFunc(method, path string, handler http.Handler) *Route {
 	)
 }
 
+func (handler Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ctx := Context{
+		ResponseWriter: w,
+		Request:        r,
+		status:         200,
+		CtxParams:      GetParamsFromCtx(r.Context()),
+	}
+	handler(&ctx)
+}
+
+func (r *Router) GetParamsFromPath(method, path string) Params {
+	if root := r.trees[strings.ToUpper(method)]; root != nil {
+		if _, _, prms, _, _ := root.search(path, r.getPoolParams); prms != nil && len(*prms) > 0 {
+			p := *prms
+			r.putPoolParams(prms)
+			return p
+		}
+	}
+	return nil
+}
+
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if r.PanicHandler != nil {
 		defer r.recv(w, req)
@@ -334,7 +375,37 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	path := req.URL.Path
 	if root := r.trees["WS"]; root != nil && req.Method == "GET" {
 		if req.Header.Get("Upgrade") == "websocket" {
-			if _, wshandle, prms, _ := root.search(path, r.getPoolParams); wshandle != nil {
+			if v, ok := r.Routes.Get(path); ok {
+				for _, vv := range v {
+					if vv.Method == "WS" && vv.WsHandler != nil {
+						if vv.Origine != "" {
+							w.Header().Set("Access-Control-Allow-Origin", vv.Origine)
+						}
+						accept := ws.FuncBeforeUpgradeWS(req)
+						if !accept {
+							w.Write([]byte("error: origin not allowed"))
+							return
+						}
+						ws.FuncBeforeUpgradeWSHandler(w, req)
+						conn, err := ws.DefaultUpgraderKMUX.Upgrade(w, req, nil)
+						if klog.CheckError(err) {
+							return
+						}
+						ctx := r.wscontextPool.Get().(*WsContext)
+						ctx.Request = req
+						if conn != nil {
+							ctx.Ws = conn
+							vv.WsHandler(ctx)
+						}
+						r.contextPool.Put(ctx)
+						return
+					}
+				}
+			}
+			if _, wshandle, prms, origines, _ := root.search(path, r.getPoolParams); wshandle != nil {
+				if len(origines) > 0 {
+					w.Header().Set("Access-Control-Allow-Origin", origines[0])
+				}
 				accept := ws.FuncBeforeUpgradeWS(req)
 				if !accept {
 					w.Write([]byte("error: origin not allowed"))
@@ -345,43 +416,64 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 				if klog.CheckError(err) {
 					return
 				}
+				ctx := r.wscontextPool.Get().(*WsContext)
+				ctx.Request = req
 				if conn != nil {
-					var ctxParams Params
+					ctx.Ws = conn
 					if prms != nil {
-						ctxParams = *prms
+						ctx.CtxParams = *prms
+						wshandle(ctx)
+						r.putPoolParams(prms)
+					} else {
+						wshandle(ctx)
 					}
-					ctx := &WsContext{
-						Router:    r,
-						Ws:        conn,
-						CtxParams: ctxParams,
-						Route:     &Route{Method: req.Method, Pattern: path, WsHandler: root.wshandler, Clients: make(map[string]*ws.Conn)},
-						Request:   req,
-					}
-					wshandle(ctx)
-					return
 				}
+				if ctx != nil {
+					r.wscontextPool.Put(ctx)
+				}
+				return
+			}
+		}
+	}
+
+	if v, ok := r.Routes.Get(path); ok {
+		for _, vv := range v {
+			if vv.Method == req.Method && vv.Handler != nil {
+				if vv.Origine != "" {
+					w.Header().Set("Access-Control-Allow-Origin", vv.Origine)
+				}
+				ctx := r.contextPool.Get().(*Context)
+				ctx.ResponseWriter = w
+				ctx.Request = req
+				vv.Handler(ctx)
+				r.contextPool.Put(ctx)
+				return
 			}
 		}
 	}
 
 	if root := r.trees[req.Method]; root != nil {
-		if handle, _, ps, tsr := root.search(path, r.getPoolParams); handle != nil {
+		if handle, _, ps, origines, tsr := root.search(path, r.getPoolParams); handle != nil {
 			ctx := r.contextPool.Get().(*Context)
-			ctx.Router = r
 			ctx.ResponseWriter = w
 			ctx.Request = req
-
-			if handle != nil {
-				if ps != nil {
-					ctx.CtxParams = *ps
-					handle(ctx)
-					r.putPoolParams(ps)
-				} else {
-					handle(ctx)
+			if ps != nil {
+				ctx.CtxParams = *ps
+				if len(origines) > 0 {
+					w.Header().Set("Access-Control-Allow-Origin", origines[0])
 				}
-				r.contextPool.Put(ctx)
-				return
+				handle(ctx)
+				r.putPoolParams(ps)
+			} else {
+				if len(origines) > 0 {
+					w.Header().Set("Access-Control-Allow-Origin", origines[0])
+				}
+				handle(ctx)
 			}
+			if ctx != nil {
+				r.contextPool.Put(ctx)
+			}
+			return
 		} else if req.Method != http.MethodConnect && path != "/" {
 			code := http.StatusMovedPermanently
 			if req.Method != "GET" {
@@ -419,7 +511,6 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			w.Header().Set("Allow", allow)
 			if r.GlobalOPTIONS != nil {
 				ctx := r.contextPool.Get().(*Context)
-				ctx.Router = r
 				ctx.ResponseWriter = w
 				ctx.Request = req
 				ctx.CtxParams = Params{}
@@ -433,7 +524,6 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			w.Header().Set("Allow", allow)
 			if r.MethodNotAllowed != nil {
 				ctx := r.contextPool.Get().(*Context)
-				ctx.Router = r
 				ctx.ResponseWriter = w
 				ctx.Request = req
 				ctx.CtxParams = Params{}
@@ -451,7 +541,6 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	if r.NotFound != nil {
 		ctx := r.contextPool.Get().(*Context)
-		ctx.Router = r
 		ctx.ResponseWriter = w
 		ctx.Request = req
 		ctx.CtxParams = Params{}
@@ -494,15 +583,17 @@ func (router *Router) Run(addr string) {
 
 	if generateSwaggerJson {
 		DocsGeneralDefaults.Host = ADDRESS
-		for method, routes := range router.allRoutes {
-			if method != "SSE" && method != "WS" {
-				for i, r := range routes {
-					if r.Docs != nil && r.Docs.Triggered {
-						docsPatterns = append(docsPatterns, &routes[i])
+		router.Routes.Range(func(s string, routes []Route) {
+			for _, route := range routes {
+				if route.Method != "SSE" && route.Method != "WS" {
+					for i, r := range routes {
+						if r.Docs != nil && r.Docs.Triggered {
+							docsPatterns = append(docsPatterns, &routes[i])
+						}
 					}
 				}
 			}
-		}
+		})
 		if generateGoComments {
 			GenerateGoDocsComments()
 		}
@@ -544,15 +635,17 @@ func (router *Router) RunTLS(addr, cert, certKey string) {
 	}()
 	if generateSwaggerJson {
 		DocsGeneralDefaults.Host = ADDRESS
-		for method, routes := range router.allRoutes {
-			if method != "SSE" && method != "WS" {
-				for _, r := range routes {
-					if r.Docs != nil && r.Docs.Triggered {
-						docsPatterns = append(docsPatterns, &r)
+		router.Routes.Range(func(s string, routes []Route) {
+			for _, route := range routes {
+				if route.Method != "SSE" && route.Method != "WS" {
+					for i, r := range routes {
+						if r.Docs != nil && r.Docs.Triggered {
+							docsPatterns = append(docsPatterns, &routes[i])
+						}
 					}
 				}
 			}
-		}
+		})
 		if generateGoComments {
 			GenerateGoDocsComments()
 		}
@@ -604,15 +697,17 @@ func (router *Router) RunAutoTLS(domainName string, subDomains ...string) {
 	}()
 	if generateSwaggerJson {
 		DocsGeneralDefaults.Host = ADDRESS
-		for method, routes := range router.allRoutes {
-			if method != "SSE" && method != "WS" {
-				for _, r := range routes {
-					if r.Docs != nil && r.Docs.Triggered {
-						docsPatterns = append(docsPatterns, &r)
+		router.Routes.Range(func(s string, routes []Route) {
+			for _, route := range routes {
+				if route.Method != "SSE" && route.Method != "WS" {
+					for i, r := range routes {
+						if r.Docs != nil && r.Docs.Triggered {
+							docsPatterns = append(docsPatterns, &routes[i])
+						}
 					}
 				}
 			}
-		}
+		})
 		if generateGoComments {
 			GenerateGoDocsComments()
 		}

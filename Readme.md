@@ -17,48 +17,31 @@ func main() {
 	app := kmux.New().WithDocs(true) // enable /docs 
 
     // use global middlewares
-    app.Use(kmux.Gzip(),kmux.Recovery(),kmux.Limiter(),kmux.Logs())
+    app.Use(kmux.Gzip(),kmux.Cors("*"),kmux.Recovery(),kmux.Limiter(),kmux.Logs())
 
     // Group
     anyGroup := app.Group("/any") // or grp := app.Group("any")
 
-    // handle '/any' and '/any/option1' and '/any/option2'
-    anyGroup.GET("/(option1|option2)?", func(c *kmux.Context) {
-		c.Text("ok ")
-	})
-    // handle only '/any/option1' and '/any/option2' but not /any
-	anyGroup.GET("/(option1|option2)", func(c *kmux.Context) {
-		c.Text("ok ")
+  
+    anyGroup.Get("/api/:table", func(c *kmux.Context) {
+		c.Text("ok "+c.Param("table"))
 	})
 
-    // '/test' '/2332' will work
-    app.GET("/:param", func(c *kmux.Context) {
+	// wild card param
+    app.Get("/test/*param", func(c *kmux.Context) {
 		c.Text(c.Param("param"))
-	})
-    app.GET("/param:str", func(c *kmux.Context) {
-		c.Text(c.Param("param"))
-	})
-    // '/4' will work, '/test' will not
-    app.GET("/param:int", func(c *kmux.Context) {
-		c.Text(c.Param("param"))
-	})
-    // '/test' and '/test-1' will work 
-    app.GET("/param:slug", func(c *kmux.Context) {
-        c.Json(kmux.M{
-            "param":c.Param("param"),
-        })
 	})
 
-    app.GET("/",kmux.BasicAuth(IndexHandler,"username","password"))
-	app.POST("/somePost", posting)
-	app.PUT("/somePut", putting)
-	app.PATCH("/somePatch", patching)
-	app.DELETE("/someDelete", deleting)
-	app.HEAD("/someDelete", head)
-	app.OPTIONS("/someDelete", options)
+    app.Get("/",kmux.BasicAuth(IndexHandler,"username","password"))
+	app.Post("/somePost", posting , "localhost:3333") // allow cors only for this handler http://127.0.0.1:3333 if global not set
+	app.Put("/somePut", putting)
+	app.Patch("/somePatch", patching)
+	app.Delete("/someDelete", deleting)
+	app.Head("/someDelete", head)
+	app.Options("/someDelete", options)
 
     // Websockets
-    app.WS("/ws/test",func(c *kmux.WsContext) {
+    app.Ws("/ws/test",func(c *kmux.WsContext) {
 		rand := utils.GenerateRandomString(5)
 		c.AddClient(rand) // add connection to broadcast list
 
@@ -73,7 +56,7 @@ func main() {
 			}
 
 			// send Json to current user
-			err = c.Json(kmux.M{
+			err = c.Json(map[string]any{
 				"Hello":"World",
 			})
 
@@ -81,7 +64,7 @@ func main() {
 			err = c.Text("any data string")
 
 			// broadcast to all connected users
-			c.Broadcast(kmux.M{
+			c.Broadcast(map[string]any{
 				"you can send":"struct insetead of maps here",
 			})
 
@@ -94,18 +77,20 @@ func main() {
 	})
 
     // Server Sent Events
-    app.SSE("/sse/logs", func(c *kmux.Context) {
-		c.Stream("working...")
+    app.Sse("/sse/logs", func(c *kmux.Context) {
+		for i := 0; i < 10;i++ {
+			c.Stream("working..."+strconv.Itoa(i))
+			time.Sleep(time.Second)
+		}
 	})
 
-	klog.Printfs("http://localhost:9313\n")
 	app.Run("localhost:9313")
 }
 ```
 
 ```go
-// BeforeRenderHtml executed before every html c.Html, you can use reqCtx.Value(key).(type.User) for example and add data to templates globaly
-func BeforeRenderHtml(fn func(reqCtx context.Context, data *map[string]any))
+// BeforeRenderHtml executed before every html c.Html, you can use c.Request.Context().Value(key).(type.User) for example and add data to templates globaly
+func BeforeRenderHtml(uniqueName string, fn func(reqCtx context.Context, data *map[string]any))
 ```
 
 
@@ -122,6 +107,7 @@ func (c *Context) QueryParam(name string) string
 func (c *Context) Json(data any)
 func (c *Context) JsonIndent(data any)
 func (c *Context) Text(body string)
+func (c *Context) TextHtml(body string)
 func (c *Context) Html(template_name string, data map[string]any) // it add .Request in all templates
 func (c *Context) Stream(response string) // SSE
 // BodyJson get json body from request and return map
@@ -136,6 +122,7 @@ func (c *Context) ServeFile(content_type, path_to_file string)
 func (c *Context) ServeEmbededFile(content_type string, embed_file []byte)
 func (c *Context) ParseMultipartForm(size ...int64) (formData url.Values, formFiles map[string][]*multipart.FileHeader)
 // UploadFile upload received_filename into folder_out and return url,fileByte,error
+func (*Context) SaveFile(fileheader *multipart.FileHeader, path string) error
 func (c *Context) UploadFile(received_filename, folder_out string, acceptedFormats ...string) (string, []byte, error)
 func (c *Context) UploadFiles(received_filenames []string, folder_out string, acceptedFormats ...string) ([]string, [][]byte, error)
 // DELETE FILE

@@ -18,7 +18,6 @@ var (
 	Static          embed.FS
 	TemplateEmbeded = false
 	StaticEmbeded   = false
-	midwrs          = []func(http.Handler) http.Handler{}
 	methNothAllowed = http.StatusText(http.StatusMethodNotAllowed)
 	// server
 	ReadTimeout      = 5 * time.Second

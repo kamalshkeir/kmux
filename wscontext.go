@@ -8,11 +8,10 @@ import (
 )
 
 type WsContext struct {
-	*Router
 	Ws        *ws.Conn
 	CtxParams Params
-	*Route
-	Request *http.Request
+	Clients   map[string]*ws.Conn
+	Request   *http.Request
 }
 
 // ReceiveText receive text from ws and disconnect when stop receiving
@@ -54,7 +53,7 @@ func (c *WsContext) Json(data map[string]any) error {
 
 // Broadcast send message to all clients in c.Clients
 func (c *WsContext) Broadcast(data any) error {
-	for _, ws := range c.Route.Clients {
+	for _, ws := range c.Clients {
 		err := ws.WriteJSON(data)
 		if err != nil {
 			return err
@@ -65,7 +64,7 @@ func (c *WsContext) Broadcast(data any) error {
 
 // BroadcastExceptCaller send message to all clients in c.Clients
 func (c *WsContext) BroadcastExceptCaller(data map[string]any) error {
-	for _, ws := range c.Route.Clients {
+	for _, ws := range c.Clients {
 		if ws != c.Ws {
 			err := ws.WriteJSON(data)
 			if err != nil {
@@ -91,17 +90,17 @@ var mu sync.RWMutex
 func (c *WsContext) RemoveRequester(name ...string) {
 	mu.Lock()
 	defer mu.Unlock()
-	for k, ws := range c.Route.Clients {
+	for k, ws := range c.Clients {
 		if len(name) > 1 {
 			n := name[0]
-			if conn, ok := c.Route.Clients[n]; ok {
-				delete(c.Route.Clients, n)
+			if conn, ok := c.Clients[n]; ok {
+				delete(c.Clients, n)
 				_ = conn.Close()
 			}
 		} else {
 			if ws == c.Ws {
-				if conn, ok := c.Route.Clients[k]; ok {
-					delete(c.Route.Clients, k)
+				if conn, ok := c.Clients[k]; ok {
+					delete(c.Clients, k)
 					_ = conn.Close()
 				}
 
@@ -115,12 +114,12 @@ func (c *WsContext) RemoveRequester(name ...string) {
 func (c *WsContext) AddClient(key string) {
 	mu.Lock()
 	defer mu.Unlock()
-	if _, ok := c.Route.Clients[key]; !ok {
-		c.Route.Clients[key] = c.Ws
+	if _, ok := c.Clients[key]; !ok {
+		c.Clients[key] = c.Ws
 	} else {
-		for k, ws := range c.Route.Clients {
+		for k, ws := range c.Clients {
 			if ws == c.Ws {
-				c.Route.Clients[k] = c.Ws
+				c.Clients[k] = c.Ws
 			}
 		}
 	}

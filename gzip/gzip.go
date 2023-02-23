@@ -13,7 +13,7 @@ func isSSEConnection(r *http.Request) bool {
 	return r.Header.Get("Accept") == "text/event-stream"
 }
 
-var GZIP = func(handler http.Handler) http.Handler {
+func GZIP(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "metrics") || isSSEConnection(r) {
 			handler.ServeHTTP(w, r)

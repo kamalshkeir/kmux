@@ -2,9 +2,11 @@ package kmux
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"sort"
 	"strings"
+	"sync"
 	"unicode"
 	"unicode/utf8"
 
@@ -42,7 +44,9 @@ func (ps Params) MatchedRoutePath() string {
 
 func (r *Router) getPoolParams() *Params {
 	ps, _ := r.paramsPool.Get().(*Params)
-	*ps = (*ps)[0:0] // reset slice
+	if ps != nil {
+		*ps = (*ps)[0:0] // reset slice
+	}
 	return ps
 }
 
@@ -61,7 +65,6 @@ func (r *Router) saveRouteIfMatch(path string, handle Handler) Handler {
 			ps[0] = Param{Key: MatchedRoutePathParam, Value: path}
 			ctx := Context{
 				status:         200,
-				Router:         r,
 				ResponseWriter: c.ResponseWriter,
 				Request:        c.Request,
 				CtxParams:      ps,
@@ -72,7 +75,6 @@ func (r *Router) saveRouteIfMatch(path string, handle Handler) Handler {
 			ps = append(ps, Param{Key: MatchedRoutePathParam, Value: path})
 			ctx := Context{
 				status:         200,
-				Router:         r,
 				ResponseWriter: c.ResponseWriter,
 				Request:        c.Request,
 				CtxParams:      ps,
@@ -448,7 +450,7 @@ func (r *Router) getAllowedMethods(path, reqMethod string) []string {
 				continue
 			}
 
-			handle, wshandle, _, _ := r.trees[method].search(path, nil)
+			handle, wshandle, _, _, _ := r.trees[method].search(path, nil)
 			if handle != nil || wshandle != nil {
 				allowed = append(allowed, method)
 			}
@@ -459,7 +461,7 @@ func (r *Router) getAllowedMethods(path, reqMethod string) []string {
 
 func (r *Router) Lookup(method, path string) (Handler, WsHandler, Params, bool) {
 	if root := r.trees[method]; root != nil {
-		handle, wshandle, ps, tsr := root.search(path, r.getPoolParams)
+		handle, wshandle, ps, _, tsr := root.search(path, r.getPoolParams)
 		if handle == nil && wshandle == nil {
 			r.putPoolParams(ps)
 			return nil, nil, nil, tsr
@@ -470,4 +472,18 @@ func (r *Router) Lookup(method, path string) (Handler, WsHandler, Params, bool) 
 		return handle, wshandle, *ps, tsr
 	}
 	return nil, nil, nil, false
+}
+
+var copyBufPool = sync.Pool{
+	New: func() interface{} {
+		return make([]byte, 4096)
+	},
+}
+
+func copyZeroAlloc(w io.Writer, r io.Reader) (int64, error) {
+	vbuf := copyBufPool.Get()
+	buf := vbuf.([]byte)
+	n, err := io.CopyBuffer(w, r, buf)
+	copyBufPool.Put(vbuf)
+	return n, err
 }
