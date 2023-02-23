@@ -307,7 +307,8 @@ func (r *Router) handle(method, path string, handler Handler, wshandler WsHandle
 	}
 	if strings.ContainsAny(path, ":*") {
 		root.addRoute(path, handler, wshandler, allowed)
-	} else {
+	}
+	if !strings.Contains(path, "*") {
 		if v, ok := r.Routes.Get(path); ok {
 			v = append(v, route)
 			r.Routes.Set(path, v)
@@ -584,6 +585,7 @@ func (router *Router) Run(addr string) {
 	if generateSwaggerJson {
 		DocsGeneralDefaults.Host = ADDRESS
 		router.Routes.Range(func(s string, routes []Route) {
+			fmt.Println(s, routes)
 			for _, route := range routes {
 				if route.Method != "SSE" && route.Method != "WS" {
 					for i, r := range routes {
