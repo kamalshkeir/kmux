@@ -259,6 +259,7 @@ func (router *Router) WithMetrics(httpHandler http.Handler, path ...string) {
 
 func (r *Router) handle(method, path string, handler Handler, wshandler WsHandler, allowed ...string) *Route {
 	varsCount := uint16(0)
+	path = strings.TrimSuffix(path, "/")
 	route := Route{}
 	route.Method = method
 	route.Pattern = path
@@ -373,7 +374,11 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		defer r.recv(w, req)
 	}
 	path := req.URL.Path
-	if root := r.trees["WS"]; root != nil && req.Method == "GET" {
+	if len(path) > 1 && path[len(path)-1] == '/' {
+		path = path[:len(path)-1]
+	}
+
+	if req.Method == "GET" {
 		if req.Header.Get("Upgrade") == "websocket" {
 			if v, ok := r.Routes.Get(path); ok {
 				for _, vv := range v {
@@ -402,36 +407,39 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 					}
 				}
 			}
-			if _, wshandle, prms, origines, _ := root.search(path, r.getPoolParams); wshandle != nil {
-				if len(origines) > 0 {
-					w.Header().Set("Access-Control-Allow-Origin", origines[0])
-				}
-				accept := ws.FuncBeforeUpgradeWS(req)
-				if !accept {
-					w.Write([]byte("error: origin not allowed"))
-					return
-				}
-				ws.FuncBeforeUpgradeWSHandler(w, req)
-				conn, err := ws.DefaultUpgraderKMUX.Upgrade(w, req, nil)
-				if klog.CheckError(err) {
-					return
-				}
-				ctx := r.wscontextPool.Get().(*WsContext)
-				ctx.Request = req
-				if conn != nil {
-					ctx.Ws = conn
-					if prms != nil {
-						ctx.CtxParams = *prms
-						wshandle(ctx)
-						r.putPoolParams(prms)
-					} else {
-						wshandle(ctx)
+
+			if root := r.trees["WS"]; root != nil {
+				if _, wshandle, prms, origines, _ := root.search(path, r.getPoolParams); wshandle != nil {
+					if len(origines) > 0 {
+						w.Header().Set("Access-Control-Allow-Origin", origines[0])
 					}
+					accept := ws.FuncBeforeUpgradeWS(req)
+					if !accept {
+						w.Write([]byte("error: origin not allowed"))
+						return
+					}
+					ws.FuncBeforeUpgradeWSHandler(w, req)
+					conn, err := ws.DefaultUpgraderKMUX.Upgrade(w, req, nil)
+					if klog.CheckError(err) {
+						return
+					}
+					ctx := r.wscontextPool.Get().(*WsContext)
+					ctx.Request = req
+					if conn != nil {
+						ctx.Ws = conn
+						if prms != nil {
+							ctx.CtxParams = *prms
+							wshandle(ctx)
+							r.putPoolParams(prms)
+						} else {
+							wshandle(ctx)
+						}
+					}
+					if ctx != nil {
+						r.wscontextPool.Put(ctx)
+					}
+					return
 				}
-				if ctx != nil {
-					r.wscontextPool.Put(ctx)
-				}
-				return
 			}
 		}
 	}

@@ -9,6 +9,6 @@ require (
 	golang.org/x/time v0.3.0
 )
 
-require github.com/kamalshkeir/kmap v1.1.1
+require github.com/kamalshkeir/kmap v1.1.2
 
 require golang.org/x/net v0.7.0 // indirect
