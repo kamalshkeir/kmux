@@ -585,7 +585,6 @@ func (router *Router) Run(addr string) {
 	if generateSwaggerJson {
 		DocsGeneralDefaults.Host = ADDRESS
 		router.Routes.Range(func(s string, routes []Route) {
-			fmt.Println(s, routes)
 			for _, route := range routes {
 				if route.Method != "SSE" && route.Method != "WS" {
 					for i, r := range routes {
