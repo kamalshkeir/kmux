@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/kamalshkeir/kmap"
 	"github.com/kamalshkeir/kmux/ws"
@@ -25,8 +26,8 @@ type Route struct {
 	Handler
 	WsHandler
 	Clients map[string]*ws.Conn
-	Docs    *DocsRoute
 	Origine string
+	Docs    *DocsRoute
 }
 
 type Router struct {
@@ -184,28 +185,11 @@ func (gr *GroupRouter) Ws(path string, handler Handler, allowedOrigine ...string
 }
 
 func (r *Router) Sse(path string, handler Handler, allowedOrigine ...string) {
-	r.Get(path, func(c *Context) {
-		c.SetHeader("Access-Control-Allow-Origin", "*")
-		c.SetHeader("Access-Control-Allow-Headers", "Content-Type")
-		c.SetHeader("Content-Type", "text/event-stream")
-		c.SetHeader("Cache-Control", "no-cache")
-		c.SetHeader("Connection", "keep-alive")
-		handler(c)
-	}, allowedOrigine...)
+	r.handle("SSE", path, handler, nil, allowedOrigine...)
 }
 
-func (gr *GroupRouter) Sse(path string, handler Handler, allowedOrigine ...string) *Route {
-	if !strings.HasPrefix(path, "/") {
-		path = "/" + path
-	}
-	return gr.Router.Get(gr.Group+path, func(c *Context) {
-		c.SetHeader("Access-Control-Allow-Origin", "*")
-		c.SetHeader("Access-Control-Allow-Headers", "Content-Type")
-		c.SetHeader("Content-Type", "text/event-stream")
-		c.SetHeader("Cache-Control", "no-cache")
-		c.SetHeader("Connection", "keep-alive")
-		handler(c)
-	}, allowedOrigine...)
+func (gr *GroupRouter) Sse(path string, handler Handler, allowedOrigine ...string) {
+	gr.Router.handle("SSE", gr.Group+path, handler, nil, allowedOrigine...)
 }
 
 // WithPprof enable std library pprof at /debug/pprof, prefix default to 'debug'
@@ -266,7 +250,7 @@ func (r *Router) handle(method, path string, handler Handler, wshandler WsHandle
 			route.Origine = "http://" + route.Origine
 		}
 	}
-	if withDocs && !strings.Contains(path, "*") {
+	if withDocs && !strings.Contains(path, "*") && method != "WS" && method != "SSE" {
 		route.Docs = &DocsRoute{
 			Pattern:     path,
 			Summary:     "A " + method + " request on " + path,
@@ -309,11 +293,22 @@ func (r *Router) handle(method, path string, handler Handler, wshandler WsHandle
 		root.addRoute(path, handler, wshandler, allowed)
 	}
 	if !strings.Contains(path, "*") {
-		if v, ok := r.Routes.Get(path); ok {
-			v = append(v, route)
-			r.Routes.Set(path, v)
+		if strings.Contains(path, ":") {
+			if withDocs {
+				if v, ok := r.Routes.Get(path); ok {
+					v = append(v, route)
+					r.Routes.Set(path, v)
+				} else {
+					r.Routes.Set(path, []Route{route})
+				}
+			}
 		} else {
-			r.Routes.Set(path, []Route{route})
+			if v, ok := r.Routes.Get(path); ok {
+				v = append(v, route)
+				r.Routes.Set(path, v)
+			} else {
+				r.Routes.Set(path, []Route{route})
+			}
 		}
 	}
 
@@ -375,75 +370,9 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		path += "/"
 	}
 
-	if req.Method == "GET" {
-		if req.Header.Get("Upgrade") == "websocket" {
-			if v, ok := r.Routes.Get(path); ok {
-				for _, vv := range v {
-					if vv.Method == "WS" && vv.WsHandler != nil {
-						if vv.Origine != "" {
-							w.Header().Set("Access-Control-Allow-Origin", vv.Origine)
-						}
-						accept := ws.FuncBeforeUpgradeWS(req)
-						if !accept {
-							w.Write([]byte("error: origin not allowed"))
-							return
-						}
-						ws.FuncBeforeUpgradeWSHandler(w, req)
-						conn, err := ws.DefaultUpgraderKMUX.Upgrade(w, req, nil)
-						if klog.CheckError(err) {
-							return
-						}
-						ctx := r.wscontextPool.Get().(*WsContext)
-						ctx.Request = req
-						if conn != nil {
-							ctx.Ws = conn
-							vv.WsHandler(ctx)
-						}
-						r.wscontextPool.Put(ctx)
-						return
-					}
-				}
-			}
-
-			if root := r.trees["WS"]; root != nil {
-				if _, wshandle, prms, origines, _ := root.search(path, r.getPoolParams); wshandle != nil {
-					if len(origines) > 0 {
-						w.Header().Set("Access-Control-Allow-Origin", origines[0])
-					}
-					accept := ws.FuncBeforeUpgradeWS(req)
-					if !accept {
-						w.Write([]byte("error: origin not allowed"))
-						return
-					}
-					ws.FuncBeforeUpgradeWSHandler(w, req)
-					conn, err := ws.DefaultUpgraderKMUX.Upgrade(w, req, nil)
-					if klog.CheckError(err) {
-						return
-					}
-					ctx := r.wscontextPool.Get().(*WsContext)
-					ctx.Request = req
-					if conn != nil {
-						ctx.Ws = conn
-						if prms != nil {
-							ctx.CtxParams = *prms
-							wshandle(ctx)
-							r.putPoolParams(prms)
-						} else {
-							wshandle(ctx)
-						}
-					}
-					if ctx != nil {
-						r.wscontextPool.Put(ctx)
-					}
-					return
-				}
-			}
-		}
-	}
-
-	if v, ok := r.Routes.Get(path); ok {
-		for _, vv := range v {
-			if vv.Method == req.Method && vv.Handler != nil {
+	if routes, ok := r.Routes.Get(path); ok {
+		for _, vv := range routes {
+			if req.Method == vv.Method && vv.Handler != nil {
 				if vv.Origine != "" {
 					w.Header().Set("Access-Control-Allow-Origin", vv.Origine)
 				}
@@ -454,57 +383,180 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 				r.contextPool.Put(ctx)
 				return
 			}
+			if vv.Method == "WS" && vv.WsHandler != nil {
+				if vv.Origine != "" {
+					w.Header().Set("Access-Control-Allow-Origin", vv.Origine)
+				}
+				accept := ws.FuncBeforeUpgradeWS(req)
+				if !accept {
+					w.Write([]byte("error: origin not allowed"))
+					return
+				}
+				ws.FuncBeforeUpgradeWSHandler(w, req)
+				conn, err := ws.DefaultUpgraderKMUX.Upgrade(w, req, nil)
+				if klog.CheckError(err) {
+					return
+				}
+				ctx := r.wscontextPool.Get().(*WsContext)
+				ctx.Request = req
+				if conn != nil {
+					ctx.Ws = conn
+					vv.WsHandler(ctx)
+				}
+				r.wscontextPool.Put(ctx)
+				return
+			}
+			if vv.Method == "SSE" && vv.Handler != nil {
+				if vv.Origine != "" {
+					w.Header().Set("Access-Control-Allow-Origin", vv.Origine)
+				}
+				controller := http.NewResponseController(w)
+				controller.SetReadDeadline(time.Time{})
+				controller.SetWriteDeadline(time.Time{})
+				w.Header().Add("Content-Type", "text/event-stream")
+				w.Header().Add("Cache-Control", "no-cache")
+				w.Header().Add("Connection", "keep-alive")
+				ctx := r.contextPool.Get().(*Context)
+				ctx.ResponseWriter = w
+				ctx.Request = req
+				vv.Handler(ctx)
+				r.contextPool.Put(ctx)
+				return
+			}
 		}
 	}
-
-	if root := r.trees[req.Method]; root != nil {
-		if handle, _, ps, origines, tsr := root.search(path, r.getPoolParams); handle != nil {
+	current := req.Method
+	root := r.trees[req.Method]
+	if root == nil {
+		current = "WS"
+		root = r.trees[current]
+		if root == nil {
+			current = "SSE"
+			root = r.trees["SSE"]
+		}
+	}
+	handle, wshandle, ps, origines, tsr := root.search(path, r.getPoolParams)
+currentState:
+	switch current {
+	case req.Method:
+		if handle != nil {
 			ctx := r.contextPool.Get().(*Context)
 			ctx.ResponseWriter = w
 			ctx.Request = req
+			if len(origines) > 0 {
+				w.Header().Set("Access-Control-Allow-Origin", origines[0])
+			}
 			if ps != nil {
 				ctx.CtxParams = *ps
-				if len(origines) > 0 {
-					w.Header().Set("Access-Control-Allow-Origin", origines[0])
-				}
 				handle(ctx)
 				r.putPoolParams(ps)
 			} else {
-				if len(origines) > 0 {
-					w.Header().Set("Access-Control-Allow-Origin", origines[0])
-				}
 				handle(ctx)
 			}
 			if ctx != nil {
 				r.contextPool.Put(ctx)
 			}
 			return
-		} else if req.Method != http.MethodConnect && path != "/" {
-			code := http.StatusMovedPermanently
-			if req.Method != "GET" {
-				code = http.StatusPermanentRedirect
+		} else {
+			current = "WS"
+			root = r.trees[current]
+			if root == nil {
+				current = "SSE"
+				root = r.trees[current]
 			}
-
-			if tsr {
-				if len(path) > 1 && path[len(path)-1] == '/' {
-					req.URL.Path = path[:len(path)-1]
-				} else {
-					req.URL.Path = path + "/"
-				}
-				http.Redirect(w, req, req.URL.String(), code)
+			handle, wshandle, ps, origines, tsr = root.search(path, r.getPoolParams)
+			goto currentState
+		}
+	case "WS":
+		if wshandle != nil {
+			accept := ws.FuncBeforeUpgradeWS(req)
+			if !accept {
+				w.Write([]byte("error: origin not allowed"))
 				return
 			}
-
-			// fix path
-			fixedPath, found := root.findInsensitivePath(
-				AdaptPath(path),
-				true,
-			)
-			if found {
-				req.URL.Path = fixedPath
-				http.Redirect(w, req, req.URL.String(), code)
+			ws.FuncBeforeUpgradeWSHandler(w, req)
+			conn, err := ws.DefaultUpgraderKMUX.Upgrade(w, req, nil)
+			if klog.CheckError(err) {
 				return
 			}
+			ctx := r.wscontextPool.Get().(*WsContext)
+			ctx.Ws = conn
+			ctx.Request = req
+			if len(origines) > 0 {
+				w.Header().Set("Access-Control-Allow-Origin", origines[0])
+			}
+			if ps != nil {
+				ctx.CtxParams = *ps
+				wshandle(ctx)
+				r.putPoolParams(ps)
+			} else {
+				wshandle(ctx)
+			}
+			if ctx != nil {
+				r.wscontextPool.Put(ctx)
+			}
+			return
+		} else {
+			current = "SSE"
+			root = r.trees[current]
+			if root != nil {
+				handle, wshandle, ps, origines, tsr = root.search(path, r.getPoolParams)
+				goto currentState
+			}
+		}
+	case "SSE":
+		if handle != nil {
+			controller := http.NewResponseController(w)
+			controller.SetReadDeadline(time.Time{})
+			controller.SetWriteDeadline(time.Time{})
+			w.Header().Add("Content-Type", "text/event-stream")
+			w.Header().Add("Cache-Control", "no-cache")
+			w.Header().Add("Connection", "keep-alive")
+			ctx := r.contextPool.Get().(*Context)
+			ctx.ResponseWriter = w
+			ctx.Request = req
+			if len(origines) > 0 {
+				w.Header().Set("Access-Control-Allow-Origin", origines[0])
+			}
+			if ps != nil {
+				ctx.CtxParams = *ps
+				handle(ctx)
+				r.putPoolParams(ps)
+			} else {
+				handle(ctx)
+			}
+			if ctx != nil {
+				r.contextPool.Put(ctx)
+			}
+			return
+		}
+	}
+
+	if req.Method != http.MethodConnect && path != "/" {
+		code := http.StatusMovedPermanently
+		if req.Method != "GET" {
+			code = http.StatusPermanentRedirect
+		}
+
+		if tsr {
+			if len(path) > 1 && path[len(path)-1] == '/' {
+				req.URL.Path = path[:len(path)-1]
+			} else {
+				req.URL.Path = path + "/"
+			}
+			http.Redirect(w, req, req.URL.String(), code)
+			return
+		}
+
+		// fix path
+		fixedPath, found := root.findInsensitivePath(
+			AdaptPath(path),
+			true,
+		)
+		if found {
+			req.URL.Path = fixedPath
+			http.Redirect(w, req, req.URL.String(), code)
+			return
 		}
 	}
 

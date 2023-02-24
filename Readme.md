@@ -1,8 +1,8 @@
-# Kmux minimalistic regex router
+# Kmux minimalistic radix router, very fast and efficient, without path conflicts multiple params
 
 # Install
 ```sh
-go get -u github.com/kamalshkeir/kmux@v1.10.2
+go get -u github.com/kamalshkeir/kmux@v1.10.3
 ```
 
 ```go
@@ -150,4 +150,51 @@ func (router *Router) LocalStatics(dirPath, webPath string)
 func (router *Router) EmbededStatics(embeded embed.FS, pathLocalDir, webPath string)
 func (router *Router) LocalTemplates(pathToDir string) error
 func (router *Router) EmbededTemplates(template_embed embed.FS, rootDir string) error
+```
+
+### SSE
+```go
+package main
+
+import (
+	"fmt"
+	"net/http"
+
+	"github.com/kamalshkeir/kmux"
+)
+
+func main() {
+	app := kmux.New()
+	app.Get("/", func(c *kmux.Context) {
+		c.Html("index.html", nil)
+	})
+	app.LocalTemplates("temps")
+
+	msgChan := make(chan string)
+	app.Sse("/test/:param", func(c *kmux.Context) {
+		fmt.Println(c.Param("param"))
+		notify := c.ResponseWriter.(http.CloseNotifier).CloseNotify()
+		for {
+			select {
+			case v := <-msgChan:
+				err := c.Stream(v)
+				if err != nil {
+					return
+				}
+			case <-notify:
+				return
+			}
+		}
+	})
+
+	// when someone hit this endpoint we publish to SSE using msgChan
+	app.Get("/pub/sse", func(c *kmux.Context) {
+		go func() {
+			msgChan <- "hello stream"
+		}()
+		c.Text("sse")
+	})
+
+	app.Run(":9313")
+}
 ```

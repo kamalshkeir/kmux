@@ -14,6 +14,7 @@ import (
 	"os/signal"
 	"regexp"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -87,17 +88,19 @@ func encodeHex(dst []byte, uuid [16]byte) {
 func (router *Router) gracefulShutdown() {
 	err := Graceful(func() error {
 		// Shutdown server
-		err := router.Server.Shutdown(context.Background())
-		if klog.CheckError(err) {
+		timeout, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		err := FuncOnServerShutdown(router.Server)
+		if err != nil {
 			return err
 		}
-		err = FuncOnServerShutdown(router.Server)
-		if klog.CheckError(err) {
+		err = router.Server.Shutdown(timeout)
+		if err != nil {
 			return err
 		}
 		return nil
 	})
-	if klog.CheckError(err) {
+	if err != nil {
 		os.Exit(1)
 	}
 }

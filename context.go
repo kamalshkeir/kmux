@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"os"
 	"strconv"
-	"strings"
 
 	"github.com/kamalshkeir/klog"
 )
@@ -183,25 +182,15 @@ func (c *Context) TextHtml(body string) {
 
 // Stream send SSE Streaming Response
 func (c *Context) Stream(response string) error {
-
-	var f http.Flusher
-	var ok bool
-	if f, ok = c.ResponseWriter.(http.Flusher); !ok {
-		return fmt.Errorf("sse not supported")
-	}
-	defer f.Flush()
-	b := strings.Builder{}
-	b.WriteString("data: ")
-	b.WriteString(response)
-	b.WriteString("\n\n")
-	_, err := c.ResponseWriter.Write([]byte(b.String()))
+	defer c.Flush()
+	_, err := c.ResponseWriter.Write([]byte("data: " + response + "\n\n"))
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (c *Context) Flush(response string) bool {
+func (c *Context) Flush() bool {
 	f, ok := c.ResponseWriter.(http.Flusher)
 	if ok {
 		f.Flush()
