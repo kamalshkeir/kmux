@@ -642,13 +642,9 @@ func (router *Router) Run(addr string) {
 	if generateSwaggerJson {
 		DocsGeneralDefaults.Host = ADDRESS
 		router.Routes.Range(func(s string, routes []Route) {
-			for _, route := range routes {
-				if route.Method != "SSE" && route.Method != "WS" {
-					for i, r := range routes {
-						if r.Docs != nil && r.Docs.Triggered {
-							docsPatterns = append(docsPatterns, &routes[i])
-						}
-					}
+			for i, route := range routes {
+				if route.Docs != nil && route.Docs.Triggered && route.Method != "SSE" && route.Method != "WS" {
+					docsPatterns = append(docsPatterns, &routes[i])
 				}
 			}
 		})
@@ -694,13 +690,9 @@ func (router *Router) RunTLS(addr, cert, certKey string) {
 	if generateSwaggerJson {
 		DocsGeneralDefaults.Host = ADDRESS
 		router.Routes.Range(func(s string, routes []Route) {
-			for _, route := range routes {
-				if route.Method != "SSE" && route.Method != "WS" {
-					for i, r := range routes {
-						if r.Docs != nil && r.Docs.Triggered {
-							docsPatterns = append(docsPatterns, &routes[i])
-						}
-					}
+			for i, route := range routes {
+				if route.Docs != nil && route.Docs.Triggered && route.Method != "SSE" && route.Method != "WS" {
+					docsPatterns = append(docsPatterns, &routes[i])
 				}
 			}
 		})
@@ -756,13 +748,9 @@ func (router *Router) RunAutoTLS(domainName string, subDomains ...string) {
 	if generateSwaggerJson {
 		DocsGeneralDefaults.Host = ADDRESS
 		router.Routes.Range(func(s string, routes []Route) {
-			for _, route := range routes {
-				if route.Method != "SSE" && route.Method != "WS" {
-					for i, r := range routes {
-						if r.Docs != nil && r.Docs.Triggered {
-							docsPatterns = append(docsPatterns, &routes[i])
-						}
-					}
+			for i, route := range routes {
+				if route.Docs != nil && route.Docs.Triggered && route.Method != "SSE" && route.Method != "WS" {
+					docsPatterns = append(docsPatterns, &routes[i])
 				}
 			}
 		})
