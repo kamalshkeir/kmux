@@ -399,7 +399,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 							ctx.Ws = conn
 							vv.WsHandler(ctx)
 						}
-						r.contextPool.Put(ctx)
+						r.wscontextPool.Put(ctx)
 						return
 					}
 				}
