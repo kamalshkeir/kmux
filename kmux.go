@@ -464,8 +464,10 @@ currentState:
 				current = "SSE"
 				root = r.trees[current]
 			}
-			handle, wshandle, ps, origines, tsr = root.search(path, r.getPoolParams)
-			goto currentState
+			if root != nil {
+				handle, wshandle, ps, origines, tsr = root.search(path, r.getPoolParams)
+				goto currentState
+			}
 		}
 	case "WS":
 		if wshandle != nil {
@@ -549,15 +551,18 @@ currentState:
 		}
 
 		// fix path
-		fixedPath, found := root.findInsensitivePath(
-			AdaptPath(path),
-			true,
-		)
-		if found {
-			req.URL.Path = fixedPath
-			http.Redirect(w, req, req.URL.String(), code)
-			return
+		if root != nil {
+			fixedPath, found := root.findInsensitivePath(
+				AdaptPath(path),
+				true,
+			)
+			if found {
+				req.URL.Path = fixedPath
+				http.Redirect(w, req, req.URL.String(), code)
+				return
+			}
 		}
+
 	}
 
 	if req.Method == http.MethodOptions {
