@@ -30,6 +30,11 @@ type Context struct {
 	status    int
 }
 
+// Context return request context
+func (c *Context) Context() context.Context {
+	return c.Request.Context()
+}
+
 // Status set status to context, will not be writed to header
 func (c *Context) Status(code int) *Context {
 	c.status = code
