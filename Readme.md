@@ -2,7 +2,7 @@
 
 # Install
 ```sh
-go get -u github.com/kamalshkeir/kmux@v1.11.0
+go get -u github.com/kamalshkeir/kmux@v1.11.1
 ```
 
 ```go
@@ -106,6 +106,7 @@ func (c *Context) SetStatus(statusCode int)
 func (c *Context) QueryParam(name string) string
 func (c *Context) Json(data any)
 func (c *Context) JsonIndent(data any)
+func (c *Context) ContextValue(key ...ContextKey) (any, bool)
 func (c *Context) Text(body string)
 func (c *Context) TextHtml(body string)
 func (c *Context) Html(template_name string, data map[string]any) // it add .Request in all templates

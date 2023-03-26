@@ -149,6 +149,7 @@ func (c *Context) IsAuthenticated(key ...ContextKey) bool {
 	}
 }
 
+// User is alias of c.ContextValue
 func (c *Context) User(key ...ContextKey) (any, bool) {
 	var k ContextKey
 	if len(key) > 0 {
@@ -157,6 +158,16 @@ func (c *Context) User(key ...ContextKey) (any, bool) {
 		k = ContextKey("user")
 	}
 	user := c.Request.Context().Value(k)
+	if user != nil {
+		return user, true
+	} else {
+		return nil, false
+	}
+}
+
+// ContextValue return request context value for given key
+func (c *Context) ContextValue(key ContextKey) (any, bool) {
+	user := c.Request.Context().Value(key)
 	if user != nil {
 		return user, true
 	} else {

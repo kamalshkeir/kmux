@@ -20,6 +20,32 @@ func (c *WsContext) Context() context.Context {
 	return c.Request.Context()
 }
 
+// User is alias of c.ContextValue
+func (c *WsContext) User(key ...ContextKey) (any, bool) {
+	var k ContextKey
+	if len(key) > 0 {
+		k = key[0]
+	} else {
+		k = ContextKey("user")
+	}
+	user := c.Request.Context().Value(k)
+	if user != nil {
+		return user, true
+	} else {
+		return nil, false
+	}
+}
+
+// ContextValue return request context value for given key
+func (c *WsContext) ContextValue(key ContextKey) (any, bool) {
+	user := c.Request.Context().Value(key)
+	if user != nil {
+		return user, true
+	} else {
+		return nil, false
+	}
+}
+
 // ReceiveText receive text from ws and disconnect when stop receiving
 func (c *WsContext) ReceiveText() (string, error) {
 	_, msgByte, err := c.Ws.ReadMessage()
