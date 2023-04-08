@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -229,6 +230,26 @@ func (c *Context) BodyJson() map[string]any {
 		return nil
 	} else {
 		return d
+	}
+}
+
+// scan body to struct, default json
+func (c *Context) BodyStruct(strctPointer any, isXML ...bool) error {
+	defer c.Request.Body.Close()
+	if len(isXML) > 0 && isXML[0] {
+		dec := xml.NewDecoder(c.Response.Body)
+		if err := dec.Decode(strctPointer); err != nil {
+			return err
+		} else {
+			return nil
+		}
+	} else {
+		dec := json.NewDecoder(c.Request.Body)
+		if err := dec.Decode(strctPointer); err != nil {
+			return err
+		} else {
+			return nil
+		}
 	}
 }
 
