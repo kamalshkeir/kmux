@@ -12,7 +12,7 @@ require (
 )
 
 require (
-	github.com/kamalshkeir/kasm v0.0.1 // indirect
+	github.com/kamalshkeir/kasm v0.0.2 // indirect
 	golang.org/x/net v0.9.0 // indirect
 	golang.org/x/sys v0.7.0 // indirect
 )
