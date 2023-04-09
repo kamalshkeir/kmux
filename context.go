@@ -3,7 +3,6 @@ package kmux
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -12,6 +11,8 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+
+	"github.com/segmentio/encoding/json"
 
 	"github.com/kamalshkeir/klog"
 )

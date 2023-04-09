@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"crypto/sha256"
 	"crypto/subtle"
-	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/segmentio/encoding/json"
 
 	"github.com/kamalshkeir/kmux/gzip"
 	"github.com/kamalshkeir/kmux/ratelimiter"

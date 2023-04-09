@@ -3,8 +3,9 @@
 package ws
 
 import (
-	"encoding/json"
 	"io"
+
+	"github.com/segmentio/encoding/json"
 )
 
 // WriteJSON writes the JSON encoding of v as a message.
@@ -13,8 +14,6 @@ import (
 func WriteJSON(c *Conn, v interface{}) error {
 	return c.WriteJSON(v)
 }
-
-
 
 // WriteJSON writes the JSON encoding of v as a message.
 //
@@ -30,13 +29,12 @@ func (c *Conn) WriteJSON(v interface{}) error {
 
 func (c *Conn) writeJSON(v interface{}) error {
 	w, err := c.NextWriter(TextMessage)
-	if err != nil {			
+	if err != nil {
 		return err
 	}
-	
 
 	err1 := json.NewEncoder(w).Encode(v)
-	if err1 != nil {	
+	if err1 != nil {
 		return err1
 	}
 	err2 := w.Close()
