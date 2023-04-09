@@ -14,7 +14,6 @@ import (
 	"strconv"
 
 	"github.com/kamalshkeir/klog"
-	"github.com/kamalshkeir/kstrct"
 )
 
 // BeforeRenderHtml executed before every html render, you can use reqCtx.Value(key).(type.User) for example and add data to templates globaly
@@ -237,19 +236,18 @@ func (c *Context) BodyJson() map[string]any {
 // scan body to struct, default json
 func (c *Context) BindBody(strctPointer any, isXML ...bool) error {
 	defer c.Request.Body.Close()
-	m := map[string]any{}
 	if len(isXML) > 0 && isXML[0] {
-		dec := xml.NewDecoder(c.Response.Body)
-		if err := dec.Decode(&m); err != nil {
+		dec := xml.NewDecoder(c.Request.Body)
+		if err := dec.Decode(strctPointer); err != nil {
 			return err
 		}
 	} else {
 		dec := json.NewDecoder(c.Request.Body)
-		if err := dec.Decode(&m); err != nil {
+		if err := dec.Decode(strctPointer); err != nil {
 			return err
 		}
 	}
-	return kstrct.FillFromMap(strctPointer, m)
+	return nil
 }
 
 func (c *Context) BodyText() string {
