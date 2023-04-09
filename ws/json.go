@@ -5,7 +5,7 @@ package ws
 import (
 	"io"
 
-	"github.com/segmentio/encoding/json"
+	"github.com/kamalshkeir/kencoding/json"
 )
 
 // WriteJSON writes the JSON encoding of v as a message.
@@ -17,7 +17,7 @@ func WriteJSON(c *Conn, v interface{}) error {
 
 // WriteJSON writes the JSON encoding of v as a message.
 //
-// See the documentation for encoding/json Marshal for details about the
+// See the documentation for kencoding/json Marshal for details about the
 // conversion of Go values to JSON.
 func (c *Conn) WriteJSON(v interface{}) error {
 	err := c.writeJSON(v)
@@ -55,7 +55,7 @@ func ReadJSON(c *Conn, v interface{}) error {
 // ReadJSON reads the next JSON-encoded message from the connection and stores
 // it in the value pointed to by v.
 //
-// See the documentation for the encoding/json Unmarshal function for details
+// See the documentation for the kencoding/json Unmarshal function for details
 // about the conversion of JSON to a Go value.
 func (c *Conn) ReadJSON(v interface{}) error {
 	_, r, err := c.NextReader()

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/segmentio/encoding/json"
+	"github.com/kamalshkeir/kencoding/json"
 
 	"github.com/kamalshkeir/klog"
 )
