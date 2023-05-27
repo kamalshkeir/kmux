@@ -197,7 +197,7 @@ func GenerateGoDocsComments(pkgName ...string) {
 		pkg = pkgName[0]
 	}
 	// create directories if they don't exist
-	os.MkdirAll(DocsEntryFile[:len(DocsEntryFile)-len("/"+filepath.Base(DocsEntryFile))], 0755)
+	os.MkdirAll(DocsEntryFile[:len(DocsEntryFile)-len("/"+filepath.Base(DocsEntryFile))], 0770)
 	sp := strings.Split(DocsEntryFile, "/")
 	typesFolder := strings.Replace(DocsEntryFile, sp[len(sp)-1], "types.go", 1)
 	if _, err := os.Stat(typesFolder); err != nil {

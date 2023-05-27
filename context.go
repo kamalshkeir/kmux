@@ -373,7 +373,7 @@ func (c *Context) UploadFile(received_filename, folder_out string, acceptedForma
 			data_string := buff.String()
 
 			// make DIRS if not exist
-			err = os.MkdirAll(MEDIA_DIR+"/"+folder_out+"/", 0664)
+			err = os.MkdirAll(MEDIA_DIR+"/"+folder_out+"/", 0770)
 			if err != nil {
 				return "", nil, err
 			}
@@ -422,7 +422,7 @@ func (c *Context) UploadFiles(received_filenames []string, folder_out string, ac
 				data_string := buff.String()
 
 				// make DIRS if not exist
-				err = os.MkdirAll(MEDIA_DIR+"/"+folder_out+"/", 0664)
+				err = os.MkdirAll(MEDIA_DIR+"/"+folder_out+"/", 0770)
 				if err != nil {
 					return nil, nil, err
 				}
