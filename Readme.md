@@ -1,5 +1,5 @@
-# Kmux minimalistic radix router/proxy, very fast and efficient, and without path conflicts using multiple path params
-
+# Kmux minimalistic radix server/proxy, very fast and efficient, and without path conflicts using multiple path params
+kmux simplifies server setup, route management, and proxy configuration. With kmux, developers can create robust and flexible proxy solutions that are easy to maintain
 # Install
 ```sh
 go get -u github.com/kamalshkeir/kmux@v1.91.2
