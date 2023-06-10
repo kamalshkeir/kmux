@@ -42,11 +42,14 @@ type Router struct {
 	trees            map[string]*node
 	PanicHandler     func(http.ResponseWriter, *http.Request, interface{})
 	maxParams        uint16
+	proxyFor         string
+	middlewares      []func(http.Handler) http.Handler
 }
 
 type GroupRouter struct {
 	*Router
 	Group string
+	midws []func(Handler) Handler
 }
 
 // New returns a new initialized Router.
@@ -74,6 +77,7 @@ func New() *Router {
 	return r
 }
 
+// Group create group path
 func (router *Router) Group(prefix string) *GroupRouter {
 	if !strings.HasPrefix(prefix, "/") {
 		prefix = "/" + prefix
@@ -84,104 +88,166 @@ func (router *Router) Group(prefix string) *GroupRouter {
 	}
 }
 
-// Use chain global middlewares applied on the router
+// Use chain global router middlewares
 func (router *Router) Use(midws ...func(http.Handler) http.Handler) {
-	midwrs = append(midwrs, midws...)
+	if len(router.middlewares) == 0 {
+		router.middlewares = midws
+	} else {
+		router.middlewares = append(router.middlewares, midws...)
+	}
 }
 
-// Get is a shortcut for router.Handle(http.MethodGet, path, handle)
+// Use chain handler middlewares
+func (gr *GroupRouter) Use(middlewares ...func(Handler) Handler) {
+	gr.midws = middlewares
+}
+
 func (r *Router) Get(path string, handler Handler, allowedOrigine ...string) *Route {
 	return r.handle(http.MethodGet, path, handler, nil, allowedOrigine...)
 }
 
 func (gr *GroupRouter) Get(pattern string, handler Handler, allowedOrigine ...string) *Route {
-	if !strings.HasPrefix(pattern, "/") {
-		pattern = "/" + pattern
+	var h Handler
+	if len(gr.midws) > 0 {
+		for i := range gr.midws {
+			if i == 0 {
+				h = gr.midws[0](handler)
+			} else {
+				h = gr.midws[i](h)
+			}
+		}
+	} else {
+		h = handler
 	}
-	return gr.Router.handle("GET", gr.Group+pattern, handler, nil, allowedOrigine...)
+	return gr.Router.handle("GET", gr.Group+pattern, h, nil, allowedOrigine...)
 }
 
-// Head is a shortcut for router.Handle(http.MethodHead, path, handle)
 func (r *Router) Head(path string, handler Handler, allowedOrigine ...string) *Route {
 	return r.handle(http.MethodHead, path, handler, nil, allowedOrigine...)
 }
 
 func (gr *GroupRouter) Head(path string, handler Handler, allowedOrigine ...string) *Route {
-	if !strings.HasPrefix(path, "/") {
-		path = "/" + path
+	var h Handler
+	if len(gr.midws) > 0 {
+		for i := range gr.midws {
+			if i == 0 {
+				h = gr.midws[0](handler)
+			} else {
+				h = gr.midws[i](h)
+			}
+		}
+	} else {
+		h = handler
 	}
-	return gr.Router.handle(http.MethodHead, gr.Group+path, handler, nil, allowedOrigine...)
+	return gr.Router.handle(http.MethodHead, gr.Group+path, h, nil, allowedOrigine...)
 }
 
-// Options is a shortcut for router.Handle(http.MethodOptions, path, handle)
 func (r *Router) Options(path string, handler Handler, allowedOrigine ...string) *Route {
 	return r.handle(http.MethodOptions, path, handler, nil, allowedOrigine...)
 }
 
 func (gr *GroupRouter) Options(path string, handler Handler, allowedOrigine ...string) *Route {
-	if !strings.HasPrefix(path, "/") {
-		path = "/" + path
+	var h Handler
+	if len(gr.midws) > 0 {
+		for i := range gr.midws {
+			if i == 0 {
+				h = gr.midws[0](handler)
+			} else {
+				h = gr.midws[i](h)
+			}
+		}
+	} else {
+		h = handler
 	}
-	return gr.Router.handle(http.MethodOptions, gr.Group+path, handler, nil, allowedOrigine...)
+	return gr.Router.handle(http.MethodOptions, gr.Group+path, h, nil, allowedOrigine...)
 }
 
-// Post is a shortcut for router.Handle(http.MethodPost, path, handle)
 func (r *Router) Post(path string, handler Handler, allowedOrigine ...string) *Route {
 	return r.handle(http.MethodPost, path, handler, nil, allowedOrigine...)
 }
 
 func (gr *GroupRouter) Post(path string, handler Handler, allowedOrigine ...string) *Route {
-	if !strings.HasPrefix(path, "/") {
-		path = "/" + path
+	var h Handler
+	if len(gr.midws) > 0 {
+		for i := range gr.midws {
+			if i == 0 {
+				h = gr.midws[0](handler)
+			} else {
+				h = gr.midws[i](h)
+			}
+		}
+	} else {
+		h = handler
 	}
-	return gr.Router.handle(http.MethodPost, gr.Group+path, handler, nil, allowedOrigine...)
+	return gr.Router.handle(http.MethodPost, gr.Group+path, h, nil, allowedOrigine...)
 }
 
-// Put is a shortcut for router.Handle(http.MethodPut, path, handle)
 func (r *Router) Put(path string, handler Handler, allowedOrigine ...string) *Route {
 	return r.handle(http.MethodPut, path, handler, nil, allowedOrigine...)
 }
 
 func (gr *GroupRouter) Put(path string, handler Handler, allowedOrigine ...string) *Route {
-	if !strings.HasPrefix(path, "/") {
-		path = "/" + path
+	var h Handler
+	if len(gr.midws) > 0 {
+		for i := range gr.midws {
+			if i == 0 {
+				h = gr.midws[0](handler)
+			} else {
+				h = gr.midws[i](h)
+			}
+		}
+	} else {
+		h = handler
 	}
-	return gr.Router.handle(http.MethodPut, gr.Group+path, handler, nil, allowedOrigine...)
+	return gr.Router.handle(http.MethodPut, gr.Group+path, h, nil, allowedOrigine...)
 }
 
-// Patch is a shortcut for router.Handle(http.MethodPatch, path, handle)
 func (r *Router) Patch(path string, handler Handler, allowedOrigine ...string) *Route {
 	return r.handle(http.MethodPatch, path, handler, nil, allowedOrigine...)
 }
 
 func (gr *GroupRouter) Patch(path string, handler Handler, allowedOrigine ...string) *Route {
-	if !strings.HasPrefix(path, "/") {
-		path = "/" + path
+	var h Handler
+	if len(gr.midws) > 0 {
+		for i := range gr.midws {
+			if i == 0 {
+				h = gr.midws[0](handler)
+			} else {
+				h = gr.midws[i](h)
+			}
+		}
+	} else {
+		h = handler
 	}
-	return gr.Router.handle(http.MethodPatch, gr.Group+path, handler, nil, allowedOrigine...)
+	return gr.Router.handle(http.MethodPatch, gr.Group+path, h, nil, allowedOrigine...)
 }
 
-// Delete is a shortcut for router.Handle(http.MethodDelete, path, handle)
 func (r *Router) Delete(path string, handle Handler, allowedOrigine ...string) *Route {
 	return r.handle(http.MethodDelete, path, handle, nil, allowedOrigine...)
 }
 
 func (gr *GroupRouter) Delete(path string, handler Handler, allowedOrigine ...string) *Route {
-	if !strings.HasPrefix(path, "/") {
-		path = "/" + path
+	var h Handler
+	if len(gr.midws) > 0 {
+		for i := range gr.midws {
+			if i == 0 {
+				h = gr.midws[0](handler)
+			} else {
+				h = gr.midws[i](h)
+			}
+		}
+	} else {
+		h = handler
 	}
-	return gr.Router.handle(http.MethodDelete, gr.Group+path, handler, nil, allowedOrigine...)
+	return gr.Router.handle(http.MethodDelete, gr.Group+path, h, nil, allowedOrigine...)
 }
 
 func (r *Router) Ws(path string, wshandle WsHandler, allowedOrigine ...string) *Route {
 	return r.handle("WS", path, nil, wshandle, allowedOrigine...)
 }
 
-func (gr *GroupRouter) Ws(path string, handler Handler, allowedOrigine ...string) {
-	if !strings.HasPrefix(path, "/") {
-		path = "/" + path
-	}
-	gr.Router.handle("WS", gr.Group+path, handler, nil, allowedOrigine...)
+func (gr *GroupRouter) Ws(path string, wshandle WsHandler, allowedOrigine ...string) {
+	gr.Router.handle("WS", gr.Group+path, nil, wshandle, allowedOrigine...)
 }
 
 func (r *Router) Sse(path string, handler Handler, allowedOrigine ...string) {
@@ -189,7 +255,19 @@ func (r *Router) Sse(path string, handler Handler, allowedOrigine ...string) {
 }
 
 func (gr *GroupRouter) Sse(path string, handler Handler, allowedOrigine ...string) {
-	gr.Router.handle("SSE", gr.Group+path, handler, nil, allowedOrigine...)
+	var h Handler
+	if len(gr.midws) > 0 {
+		for i := range gr.midws {
+			if i == 0 {
+				h = gr.midws[0](handler)
+			} else {
+				h = gr.midws[i](h)
+			}
+		}
+	} else {
+		h = handler
+	}
+	gr.Router.handle("SSE", gr.Group+path, h, nil, allowedOrigine...)
 }
 
 // WithPprof enable std library pprof at /debug/pprof, prefix default to 'debug'
@@ -220,6 +298,7 @@ func (router *Router) WithPprof(path ...string) {
 	router.Get("/"+path[0]+"/:type", handler)
 }
 
+// WithMetrics take prometheus handler and serve metrics on path or default /metrics
 func (router *Router) WithMetrics(httpHandler http.Handler, path ...string) {
 	if len(path) > 0 && strings.Contains(path[0], "/") {
 		path[0] = strings.TrimPrefix(path[0], "/")
@@ -326,11 +405,13 @@ func (r *Router) handle(method, path string, handler Handler, wshandler WsHandle
 	return &route
 }
 
+// GetParamsFromCtx get a list of params from path, have 2 methods Get(param) and MatchedRoutePath()
 func GetParamsFromCtx(requestContext context.Context) Params {
 	p, _ := requestContext.Value(ParamsKey).(Params)
 	return p
 }
 
+// HandlerFunc adapter for kmux Handler
 func (r *Router) HandlerFunc(method, path string, handler http.Handler) *Route {
 	return r.handle(method, path,
 		func(c *Context) {
@@ -348,17 +429,6 @@ func (handler Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		CtxParams:      GetParamsFromCtx(r.Context()),
 	}
 	handler(&ctx)
-}
-
-func (r *Router) GetParamsFromPath(method, path string) Params {
-	if root := r.trees[strings.ToUpper(method)]; root != nil {
-		if _, _, prms, _, _ := root.search(path, r.getPoolParams); prms != nil && len(*prms) > 0 {
-			p := *prms
-			r.putPoolParams(prms)
-			return p
-		}
-	}
-	return nil
 }
 
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -434,6 +504,10 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			current = "SSE"
 			root = r.trees["SSE"]
 		}
+	}
+	if root == nil {
+		http.Error(w, "NOT FOUND", http.StatusInternalServerError)
+		return
 	}
 	handle, wshandle, ps, origines, tsr := root.search(path, r.getPoolParams)
 currentState:
@@ -619,6 +693,7 @@ func (router *Router) Run(addr string) {
 			} else {
 				HOST = "localhost"
 				PORT = sp[1]
+				port = ":" + PORT
 				ADDRESS = HOST + addr
 			}
 		} else {
@@ -669,6 +744,7 @@ func (router *Router) RunTLS(addr, cert, certKey string) {
 			} else {
 				HOST = "localhost"
 				PORT = sp[1]
+				port = ":" + PORT
 				ADDRESS = HOST + addr
 			}
 		} else {
@@ -706,7 +782,7 @@ func (router *Router) RunTLS(addr, cert, certKey string) {
 }
 
 // RunAutoTLS HTTPS server generate certificates and handle renew
-func (router *Router) RunAutoTLS(domainName string, subDomains ...string) {
+func (router *Router) RunAutoTLS(domainName string) {
 	if DOMAIN != domainName {
 		if strings.Contains(domainName, ":") {
 			sp := strings.Split(domainName, ":")
@@ -714,6 +790,7 @@ func (router *Router) RunAutoTLS(domainName string, subDomains ...string) {
 				ADDRESS = domainName
 				DOMAIN = sp[0]
 				PORT = sp[1]
+				port = ":" + PORT
 			} else {
 				fmt.Println("error: server domainName not valid")
 				return
@@ -722,8 +799,9 @@ func (router *Router) RunAutoTLS(domainName string, subDomains ...string) {
 			err := checkDomain(domainName)
 			if err == nil {
 				DOMAIN = domainName
-				PORT = ":443"
-				ADDRESS = domainName + PORT
+				PORT = "443"
+				port = ":" + PORT
+				ADDRESS = domainName + port
 			} else {
 				fmt.Println("error: server domainName not valid")
 				return
@@ -731,11 +809,13 @@ func (router *Router) RunAutoTLS(domainName string, subDomains ...string) {
 		}
 		DOMAIN = domainName
 	}
-	if len(SUBDOMAINS) != len(subDomains) {
-		SUBDOMAINS = subDomains
+	if proxyUsed {
+		if len(SUBDOMAINS) != proxies.Len() {
+			SUBDOMAINS = proxies.Keys()
+		}
 	}
-	// graceful Shutdown server
 
+	// graceful Shutdown server
 	router.createServerCerts(DOMAIN, SUBDOMAINS...)
 	go func() {
 		klog.Printfs("mgrunning on https://%s , subdomains: %v\n", DOMAIN, SUBDOMAINS)

@@ -1,8 +1,8 @@
-# Kmux minimalistic radix router, very fast and efficient, without path conflicts multiple params
+# Kmux minimalistic radix router/proxy, very fast and efficient, and without path conflicts using multiple path params
 
 # Install
 ```sh
-go get -u github.com/kamalshkeir/kmux@v1.11.7
+go get -u github.com/kamalshkeir/kmux@v1.11.8
 ```
 
 ```go
@@ -197,5 +197,44 @@ func main() {
 	})
 
 	app.Run(":9313")
+}
+```
+
+# Proxy
+
+```go
+package main
+
+import (
+	"fmt"
+	"net/http"
+
+	"github.com/kamalshkeir/kmux"
+)
+
+func main() {
+	app := kmux.New()
+	app.Use(func(h http.Handler) http.Handler {
+		return kmux.Handler(func(c *kmux.Context) {
+			fmt.Println("PROXY:", c.Request.Host+c.Request.URL.Path)
+			h.ServeHTTP(c.ResponseWriter, c.Request)
+		})
+	})
+
+	nc := app.ReverseProxy("nc.localhost", "http://localhost:9313")
+	nc.Use(func(h http.Handler) http.Handler {
+		return kmux.Handler(func(c *kmux.Context) {
+			fmt.Println("NC APP:", c.Request.Host+c.Request.URL.Path)
+		})
+	})
+
+	cv := app.ReverseProxy("dev.localhost", "https://kamalshkeir.dev")
+	cv.Use(func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Println("PORTFOLIO:", r.Host+r.URL.Path)
+		})
+	})
+
+	app.Run(":9999")
 }
 ```

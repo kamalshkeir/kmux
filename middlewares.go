@@ -18,8 +18,6 @@ import (
 	"github.com/kamalshkeir/klog"
 )
 
-var midwrs = []func(http.Handler) http.Handler{}
-
 func Gzip() func(http.Handler) http.Handler {
 	return gzip.GZIP
 }

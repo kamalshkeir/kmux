@@ -123,6 +123,7 @@ func (c *Context) Html(template_name string, data map[string]any) {
 	err := allTemplates.ExecuteTemplate(&buff, template_name, data)
 	if klog.CheckError(err) {
 		c.status = http.StatusInternalServerError
+		klog.Printfs("rdcould not render %s : %v", template_name, err)
 		http.Error(c.ResponseWriter, fmt.Sprintf("could not render %s : %v", template_name, err), c.status)
 		return
 	}
@@ -133,8 +134,7 @@ func (c *Context) Html(template_name string, data map[string]any) {
 	}
 	c.WriteHeader(c.status)
 
-	_, err = buff.WriteTo(c.ResponseWriter)
-	klog.CheckError(err)
+	_, _ = buff.WriteTo(c.ResponseWriter)
 }
 
 func (c *Context) IsAuthenticated(key ...ContextKey) bool {

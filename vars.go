@@ -11,7 +11,7 @@ var (
 	MEDIA_DIR       = "media"
 	HOST            = ""
 	PORT            = ""
-	ADDRESS         = "localhost:9313"
+	ADDRESS         = ""
 	DOMAIN          = ""
 	SUBDOMAINS      = []string{}
 	Templates       embed.FS
@@ -46,5 +46,5 @@ var (
 	COOKIES_Expires  = 24 * 7 * time.Hour
 	COOKIES_SameSite = http.SameSiteStrictMode
 	COOKIES_HttpOnly = true
-	COOKIES_Secure   = false
+	COOKIES_SECURE   = false
 )

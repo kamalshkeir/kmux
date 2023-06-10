@@ -202,12 +202,12 @@ func (router *Router) createServerCerts(domainName string, subDomains ...string)
 // initAutoServer init the server with midws with tlsConfig
 func (router *Router) initAutoServer(addr string, tlsconf *tls.Config) {
 	var h http.Handler
-	if len(midwrs) > 0 {
-		for i := range midwrs {
+	if len(router.middlewares) > 0 {
+		for i := range router.middlewares {
 			if i == 0 {
-				h = midwrs[0](router)
+				h = router.middlewares[0](router)
 			} else {
-				h = midwrs[i](h)
+				h = router.middlewares[i](h)
 			}
 		}
 	} else {
@@ -341,12 +341,12 @@ func (router *Router) initServer(addr string) {
 		ADDRESS = addr
 	}
 	var h http.Handler
-	if len(midwrs) > 0 {
-		for i := range midwrs {
+	if len(router.middlewares) > 0 {
+		for i := range router.middlewares {
 			if i == 0 {
-				h = midwrs[0](router)
+				h = router.middlewares[0](router)
 			} else {
-				h = midwrs[i](h)
+				h = router.middlewares[i](h)
 			}
 		}
 	} else {
