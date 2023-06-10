@@ -221,14 +221,14 @@ func main() {
 		})
 	})
 
-	nc := app.ReverseProxy("nc.localhost", "http://localhost:9313")
+	nc := app.ReverseProxy("nc.localhost", "http://localhost:9313") // http://nc.localhost:9999
 	nc.Use(func(h http.Handler) http.Handler {
 		return kmux.Handler(func(c *kmux.Context) {
 			fmt.Println("NC APP:", c.Request.Host+c.Request.URL.Path)
 		})
 	})
 
-	cv := app.ReverseProxy("dev.localhost", "https://kamalshkeir.dev")
+	cv := app.ReverseProxy("dev.localhost", "https://kamalshkeir.dev") // http://dev.localhost:9999
 	cv.Use(func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			fmt.Println("PORTFOLIO:", r.Host+r.URL.Path)
