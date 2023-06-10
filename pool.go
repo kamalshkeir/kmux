@@ -38,10 +38,6 @@ func ParamsFromContext(ctx context.Context) Params {
 
 var MatchedRoutePathParam = "$matchedRoutePath"
 
-func (ps Params) MatchedRoutePath() string {
-	return ps.Get(MatchedRoutePathParam)
-}
-
 func (r *Router) getPoolParams() *Params {
 	ps, _ := r.paramsPool.Get().(*Params)
 	if ps != nil {
@@ -53,34 +49,6 @@ func (r *Router) getPoolParams() *Params {
 func (r *Router) putPoolParams(ps *Params) {
 	if ps != nil {
 		r.paramsPool.Put(ps)
-	}
-}
-
-func (r *Router) saveRouteIfMatch(path string, handle Handler) Handler {
-	return func(c *Context) {
-		ps := ParamsFromContext(c.Request.Context())
-		if len(ps) == 0 {
-			psp := r.getPoolParams()
-			ps = (*psp)[0:1]
-			ps[0] = Param{Key: MatchedRoutePathParam, Value: path}
-			ctx := Context{
-				status:         200,
-				ResponseWriter: c.ResponseWriter,
-				Request:        c.Request,
-				CtxParams:      ps,
-			}
-			handle(&ctx)
-			r.putPoolParams(psp)
-		} else {
-			ps = append(ps, Param{Key: MatchedRoutePathParam, Value: path})
-			ctx := Context{
-				status:         200,
-				ResponseWriter: c.ResponseWriter,
-				Request:        c.Request,
-				CtxParams:      ps,
-			}
-			handle(&ctx)
-		}
 	}
 }
 
