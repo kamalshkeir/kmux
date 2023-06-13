@@ -323,6 +323,10 @@ func (r *Router) handle(method, path string, handler Handler, wshandler WsHandle
 	route.WsHandler = wshandler
 	route.Clients = nil
 	if len(allowed) > 0 {
+		if !corsEnabled {
+			corsEnabled = true
+			r.Use(Cors("*"))
+		}
 		route.Origine = allowed[0]
 		route.Origine = strings.Replace(route.Origine, "localhost", "127.0.0.1", 1)
 		if !strings.HasPrefix(route.Origine, "http") {
@@ -443,11 +447,17 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if routes, ok := r.Routes.Get(path); ok {
 		for _, vv := range routes {
 			if req.Method == vv.Method && vv.Handler != nil {
-				if vv.Origine != "" {
-					w.Header().Set("Access-Control-Allow-Origin", vv.Origine)
-				}
 				ctx := r.contextPool.Get().(*Context)
 				ctx.ResponseWriter = w
+				if corsEnabled {
+					if vv.Origine != "" {
+						ctx.SetHeader("Access-Control-Allow-Origin", vv.Origine)
+					} else {
+						ctx.SetHeader("Access-Control-Allow-Origin", "*")
+					}
+					ctx.SetHeader("Access-Control-Allow-Headers", "Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers, X-Korm, Authorization, Token, X-Token")
+					ctx.SetHeader("Access-Control-Allow-Methods", "*")
+				}
 				ctx.Request = req
 				vv.Handler(ctx)
 				r.contextPool.Put(ctx)
@@ -483,9 +493,9 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 				controller := http.NewResponseController(w)
 				controller.SetReadDeadline(time.Time{})
 				controller.SetWriteDeadline(time.Time{})
-				w.Header().Add("Content-Type", "text/event-stream")
-				w.Header().Add("Cache-Control", "no-cache")
-				w.Header().Add("Connection", "keep-alive")
+				w.Header().Set("Content-Type", "text/event-stream")
+				w.Header().Set("Cache-Control", "no-cache")
+				w.Header().Set("Connection", "keep-alive")
 				ctx := r.contextPool.Get().(*Context)
 				ctx.ResponseWriter = w
 				ctx.Request = req
@@ -517,8 +527,14 @@ currentState:
 			ctx := r.contextPool.Get().(*Context)
 			ctx.ResponseWriter = w
 			ctx.Request = req
-			if len(origines) > 0 {
-				w.Header().Set("Access-Control-Allow-Origin", origines[0])
+			if corsEnabled {
+				if len(origines) > 0 {
+					w.Header().Set("Access-Control-Allow-Origin", strings.Join(origines, ","))
+				} else {
+					w.Header().Set("Access-Control-Allow-Origin", "*")
+				}
+				w.Header().Set("Access-Control-Allow-Headers", "Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers, X-Korm, Authorization, Token, X-Token")
+				w.Header().Set("Access-Control-Allow-Methods", "*")
 			}
 			if ps != nil {
 				ctx.CtxParams = *ps

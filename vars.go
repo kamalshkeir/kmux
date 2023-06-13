@@ -20,12 +20,9 @@ var (
 	StaticEmbeded   = false
 	methNothAllowed = http.StatusText(http.StatusMethodNotAllowed)
 	// server
-	ReadTimeout      = 5 * time.Second
-	WriteTimeout     = 20 * time.Second
-	IdleTimeout      = 20 * time.Second
-	FuncCorsSameSite = func(c *Context, rt *Route) bool {
-		return true
-	}
+	ReadTimeout          = 5 * time.Second
+	WriteTimeout         = 20 * time.Second
+	IdleTimeout          = 20 * time.Second
 	FuncOnServerShutdown = func(srv *http.Server) error {
 		return nil
 	}

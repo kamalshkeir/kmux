@@ -18,6 +18,8 @@ import (
 	"github.com/kamalshkeir/klog"
 )
 
+var corsEnabled bool
+
 func Gzip() func(http.Handler) http.Handler {
 	return gzip.GZIP
 }
@@ -31,11 +33,12 @@ func Recovery() func(http.Handler) http.Handler {
 }
 
 var Cors = func(allowed ...string) func(http.Handler) http.Handler {
+	corsEnabled = true
 	for i := range allowed {
-		allowed[i] = strings.ReplaceAll(allowed[i], "localhost", "127.0.0.1")
 		if allowed[i] == "*" {
 			continue
 		}
+		allowed[i] = strings.ReplaceAll(allowed[i], "localhost", "127.0.0.1")
 		if !strings.HasPrefix(allowed[i], "http") {
 			allowed[i] = "http://" + allowed[i]
 		}
@@ -48,10 +51,10 @@ var Cors = func(allowed ...string) func(http.Handler) http.Handler {
 			// Set headers
 			o := strings.Join(allowed, ", ")
 			w.Header().Set("Access-Control-Allow-Origin", o)
-			w.Header().Set("Access-Control-Allow-Headers:", "*")
+			w.Header().Set("Access-Control-Allow-Headers", "Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers, X-Korm, Authorization, Token, X-Token")
 			w.Header().Set("Access-Control-Allow-Methods", "*")
 			if r.Method == "OPTIONS" {
-				w.WriteHeader(http.StatusOK)
+				w.WriteHeader(http.StatusNoContent)
 				return
 			}
 			// Next
