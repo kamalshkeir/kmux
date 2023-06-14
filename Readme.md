@@ -2,7 +2,7 @@
 kmux simplifies server setup, route management, and proxy configuration. With kmux, developers can create robust and flexible proxy solutions that are easy to maintain
 # Install
 ```sh
-go get -u github.com/kamalshkeir/kmux@v1.91.3
+go get -u github.com/kamalshkeir/kmux@v1.91.4
 ```
 
 ```go
@@ -33,7 +33,7 @@ func main() {
 	})
 
     app.Get("/",kmux.BasicAuth(IndexHandler,"username","password"))
-	app.Post("/somePost", posting , "localhost:3333") // allow cors only for this handler http://127.0.0.1:3333 if global not set
+	app.Post("/somePost", posting , "localhost:3333") // kmux.Cors("*")  or kmux.Cors("localhost:3333") should be used, and only for this handler, we check if origin is http://127.0.0.1:3333
 	app.Put("/somePut", putting)
 	app.Patch("/somePatch", patching)
 	app.Delete("/someDelete", deleting)

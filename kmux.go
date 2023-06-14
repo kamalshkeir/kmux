@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/kamalshkeir/kencoding/json"
 	"github.com/kamalshkeir/kmap"
 	"github.com/kamalshkeir/kmux/ws"
 
@@ -323,15 +324,18 @@ func (r *Router) handle(method, path string, handler Handler, wshandler WsHandle
 	route.WsHandler = wshandler
 	route.Clients = nil
 	if len(allowed) > 0 {
-		if !corsEnabled {
-			corsEnabled = true
-			r.Use(Cors("*"))
+		for i := range allowed {
+			if allowed[i] == "*" {
+				route.Origine = allowed[i]
+				break
+			} else if !strings.Contains(allowed[i], ",") {
+				allowed[i] = strings.Replace(allowed[i], "localhost", "127.0.0.1", -1)
+				if !strings.HasPrefix(allowed[i], "http") {
+					allowed[i] = "http://" + allowed[i]
+				}
+			}
 		}
-		route.Origine = allowed[0]
-		route.Origine = strings.Replace(route.Origine, "localhost", "127.0.0.1", 1)
-		if !strings.HasPrefix(route.Origine, "http") {
-			route.Origine = "http://" + route.Origine
-		}
+		route.Origine = strings.Join(allowed, ",")
 	}
 	if withDocs && !strings.Contains(path, "*") && method != "WS" && method != "SSE" {
 		route.Docs = &DocsRoute{
@@ -435,6 +439,15 @@ func (handler Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	handler(&ctx)
 }
 
+func jsonResponse(status int, w http.ResponseWriter, data any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	by, err := json.Marshal(data)
+	if !klog.CheckError(err) {
+		w.Write(by)
+	}
+}
+
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if r.PanicHandler != nil {
 		defer r.recv(w, req)
@@ -449,14 +462,14 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			if req.Method == vv.Method && vv.Handler != nil {
 				ctx := r.contextPool.Get().(*Context)
 				ctx.ResponseWriter = w
-				if corsEnabled {
-					if vv.Origine != "" {
-						ctx.SetHeader("Access-Control-Allow-Origin", vv.Origine)
-					} else {
-						ctx.SetHeader("Access-Control-Allow-Origin", "*")
+				if corsEnabled && vv.Origine != "" && vv.Origine != "*" {
+					reqOrigin := req.Header.Get("Origin")
+					if !strings.Contains(vv.Origine, reqOrigin) {
+						jsonResponse(http.StatusUnauthorized, w, map[string]any{
+							"error": "Cross Origin Not Allowed",
+						})
+						return
 					}
-					ctx.SetHeader("Access-Control-Allow-Headers", "Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers, X-Korm, Authorization, Token, X-Token")
-					ctx.SetHeader("Access-Control-Allow-Methods", "*")
 				}
 				ctx.Request = req
 				vv.Handler(ctx)
@@ -464,8 +477,14 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 			if vv.Method == "WS" && vv.WsHandler != nil {
-				if vv.Origine != "" {
-					w.Header().Set("Access-Control-Allow-Origin", vv.Origine)
+				if corsEnabled && vv.Origine != "" && vv.Origine != "*" {
+					reqOrigin := req.Header.Get("Origin")
+					if !strings.Contains(vv.Origine, reqOrigin) {
+						jsonResponse(http.StatusUnauthorized, w, map[string]any{
+							"error": "Cross Origin Not Allowed",
+						})
+						return
+					}
 				}
 				accept := ws.FuncBeforeUpgradeWS(req)
 				if !accept {
@@ -487,8 +506,14 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 			if vv.Method == "SSE" && vv.Handler != nil {
-				if vv.Origine != "" {
-					w.Header().Set("Access-Control-Allow-Origin", vv.Origine)
+				if corsEnabled && vv.Origine != "" && vv.Origine != "*" {
+					reqOrigin := req.Header.Get("Origin")
+					if !strings.Contains(vv.Origine, reqOrigin) {
+						jsonResponse(http.StatusUnauthorized, w, map[string]any{
+							"error": "Cross Origin Not Allowed",
+						})
+						return
+					}
 				}
 				controller := http.NewResponseController(w)
 				controller.SetReadDeadline(time.Time{})
@@ -516,9 +541,10 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 	if root == nil {
-		http.Error(w, "NOT FOUND", http.StatusInternalServerError)
+		http.Error(w, "NOT FOUND", http.StatusNotFound)
 		return
 	}
+
 	handle, wshandle, ps, origines, tsr := root.search(path, r.getPoolParams)
 currentState:
 	switch current {
@@ -527,14 +553,20 @@ currentState:
 			ctx := r.contextPool.Get().(*Context)
 			ctx.ResponseWriter = w
 			ctx.Request = req
-			if corsEnabled {
-				if len(origines) > 0 {
-					w.Header().Set("Access-Control-Allow-Origin", strings.Join(origines, ","))
-				} else {
-					w.Header().Set("Access-Control-Allow-Origin", "*")
+			if corsEnabled && len(origines) > 0 && origines[0] != "*" {
+				reqOrigin := req.Header.Get("Origin")
+				found := false
+				for _, o := range origines {
+					if o == reqOrigin {
+						found = true
+					}
 				}
-				w.Header().Set("Access-Control-Allow-Headers", "Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers, X-Korm, Authorization, Token, X-Token")
-				w.Header().Set("Access-Control-Allow-Methods", "*")
+				if !found {
+					jsonResponse(http.StatusUnauthorized, w, map[string]any{
+						"error": "Cross Origin Not Allowed",
+					})
+					return
+				}
 			}
 			if ps != nil {
 				ctx.CtxParams = *ps
@@ -561,6 +593,21 @@ currentState:
 		}
 	case "WS":
 		if wshandle != nil {
+			if corsEnabled && len(origines) > 0 && origines[0] != "*" {
+				reqOrigin := req.Header.Get("Origin")
+				found := false
+				for _, o := range origines {
+					if o == reqOrigin {
+						found = true
+					}
+				}
+				if !found {
+					jsonResponse(http.StatusUnauthorized, w, map[string]any{
+						"error": "Cross Origin Not Allowed",
+					})
+					return
+				}
+			}
 			accept := ws.FuncBeforeUpgradeWS(req)
 			if !accept {
 				w.Write([]byte("error: origin not allowed"))
@@ -574,9 +621,7 @@ currentState:
 			ctx := r.wscontextPool.Get().(*WsContext)
 			ctx.Ws = conn
 			ctx.Request = req
-			if len(origines) > 0 {
-				w.Header().Set("Access-Control-Allow-Origin", origines[0])
-			}
+
 			if ps != nil {
 				ctx.CtxParams = *ps
 				wshandle(ctx)
@@ -607,8 +652,20 @@ currentState:
 			ctx := r.contextPool.Get().(*Context)
 			ctx.ResponseWriter = w
 			ctx.Request = req
-			if len(origines) > 0 {
-				w.Header().Set("Access-Control-Allow-Origin", origines[0])
+			if corsEnabled && len(origines) > 0 && origines[0] != "*" {
+				reqOrigin := req.Header.Get("Origin")
+				found := false
+				for _, o := range origines {
+					if o == reqOrigin {
+						found = true
+					}
+				}
+				if !found {
+					jsonResponse(http.StatusUnauthorized, w, map[string]any{
+						"error": "Cross Origin Not Allowed",
+					})
+					return
+				}
 			}
 			if ps != nil {
 				ctx.CtxParams = *ps
@@ -652,7 +709,6 @@ currentState:
 				return
 			}
 		}
-
 	}
 
 	if req.Method == http.MethodOptions {

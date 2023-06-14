@@ -34,6 +34,9 @@ func Recovery() func(http.Handler) http.Handler {
 
 var Cors = func(allowed ...string) func(http.Handler) http.Handler {
 	corsEnabled = true
+	if len(allowed) == 0 {
+		allowed = append(allowed, "*")
+	}
 	for i := range allowed {
 		if allowed[i] == "*" {
 			continue
@@ -45,15 +48,16 @@ var Cors = func(allowed ...string) func(http.Handler) http.Handler {
 	}
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if len(allowed) == 0 {
-				allowed = append(allowed, "*")
+			if allowed[0] == "*" {
+				w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
+			} else {
+				w.Header().Set("Access-Control-Allow-Origin", allowed[0])
 			}
-			// Set headers
-			o := strings.Join(allowed, ", ")
-			w.Header().Set("Access-Control-Allow-Origin", o)
-			w.Header().Set("Access-Control-Allow-Headers", "Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers, X-Korm, Authorization, Token, X-Token")
 			w.Header().Set("Access-Control-Allow-Methods", "*")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			w.Header().Set("Access-Control-Allow-Headers", "*")
 			if r.Method == "OPTIONS" {
+				w.Header().Set("Access-Control-Allow-Headers", "Access-Control-Allow-Headers, Origin, Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers, X-Korm, Authorization, Token, X-Token")
 				w.WriteHeader(http.StatusNoContent)
 				return
 			}

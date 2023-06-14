@@ -43,5 +43,5 @@ var (
 	COOKIES_Expires  = 24 * 7 * time.Hour
 	COOKIES_SameSite = http.SameSiteStrictMode
 	COOKIES_HttpOnly = true
-	COOKIES_SECURE   = false
+	COOKIES_SECURE   = true
 )

@@ -19,6 +19,9 @@ func (c *Context) SetCookie(key, value string, maxAge ...time.Duration) {
 			COOKIES_SECURE = true
 		}
 	}
+	if corsEnabled {
+		COOKIES_SameSite = http.SameSiteNoneMode
+	}
 	var ma int
 	if len(maxAge) > 0 {
 		ma = int(maxAge[0].Seconds())

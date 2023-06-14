@@ -430,7 +430,7 @@ type node struct {
 	children  []*node
 	handler   Handler
 	wshandler WsHandler
-	orgines   []string
+	origines  []string
 }
 
 func (n *node) increasePrio(pos int) int {
@@ -623,7 +623,7 @@ func (n *node) insertChild(path, fullPath string, handle Handler, wshandler WsHa
 			} else if wshandler != nil {
 				n.wshandler = wshandler
 			}
-			n.orgines = allowed
+			n.origines = allowed
 
 			return
 		}
@@ -659,7 +659,7 @@ func (n *node) insertChild(path, fullPath string, handle Handler, wshandler WsHa
 		n.prio++
 		// Second node: node holding the variable
 		child = &node{
-			orgines:   allowed,
+			origines:  allowed,
 			path:      path[i:],
 			nodeTypeV: catchAll,
 			handler:   handle,
@@ -672,7 +672,7 @@ func (n *node) insertChild(path, fullPath string, handle Handler, wshandler WsHa
 	}
 
 	// If no wildcard was found, simply insert the path and handle
-	n.orgines = allowed
+	n.origines = allowed
 	n.path = path
 	n.handler = handle
 	n.wshandler = wshandler
@@ -700,7 +700,7 @@ walk: // Outer loop for walking the tree
 					// Nothing found.
 					// We can recommend to redirect to the same URL without a
 					// trailing slash if a leaf exists for that path.
-					origines = n.orgines
+					origines = n.origines
 					tsr = (path == "/" && (n.handler != nil || n.wshandler != nil))
 					return
 				}
@@ -728,7 +728,7 @@ walk: // Outer loop for walking the tree
 							Value: path[:end],
 						}
 					}
-					origines = n.orgines
+					origines = n.origines
 					// We need to go deeper!
 					if end < len(path) {
 						if len(n.children) > 0 {
@@ -767,7 +767,7 @@ walk: // Outer loop for walking the tree
 							Value: path,
 						}
 					}
-					origines = n.orgines
+					origines = n.origines
 					handle = n.handler
 					wshandle = n.wshandler
 					return
@@ -780,7 +780,7 @@ walk: // Outer loop for walking the tree
 		} else if path == prefix {
 			// We should have reached the node containing the handle.
 			// Check if this node has a handle registered.
-			origines = n.orgines
+			origines = n.origines
 			if handle = n.handler; handle != nil {
 				return
 			} else if wshandle = n.wshandler; wshandle != nil {
