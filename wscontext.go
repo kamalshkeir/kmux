@@ -83,6 +83,13 @@ func (c *WsContext) Json(data map[string]any) error {
 	return nil
 }
 
+// Error send json error
+func (c *WsContext) Error(msg string) {
+	_ = c.Ws.WriteJSON(map[string]any{
+		"error": msg,
+	})
+}
+
 // Broadcast send message to all clients in c.Clients
 func (c *WsContext) Broadcast(data any) error {
 	for _, ws := range c.Clients {

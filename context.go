@@ -151,11 +151,11 @@ func (c *Context) IsAuthenticated(key ...ContextKey) bool {
 	}
 }
 
-// User is alias of c.ContextValue
-func (c *Context) User(key ...ContextKey) (any, bool) {
+// User is alias of c.Keys but have key default to 'user'
+func (c *Context) User(key ...string) (any, bool) {
 	var k ContextKey
 	if len(key) > 0 {
-		k = key[0]
+		k = ContextKey(key[0])
 	} else {
 		k = ContextKey("user")
 	}
@@ -167,11 +167,11 @@ func (c *Context) User(key ...ContextKey) (any, bool) {
 	}
 }
 
-// ContextValue return request context value for given key
-func (c *Context) ContextValue(key ContextKey) (any, bool) {
-	user := c.Request.Context().Value(key)
-	if user != nil {
-		return user, true
+// Keys return request context value for given key
+func (c *Context) Keys(contextKey string) (any, bool) {
+	v := c.Request.Context().Value(ContextKey(contextKey))
+	if v != nil {
+		return v, true
 	} else {
 		return nil, false
 	}
@@ -301,10 +301,19 @@ func (c *Context) ParseMultipartForm(size ...int64) (formData url.Values, formFi
 }
 
 // SaveFile save file to path
-func (*Context) SaveFile(fileheader *multipart.FileHeader, path string) error {
+func (c *Context) SaveFile(fileheader *multipart.FileHeader, path string) error {
 	return SaveMultipartFile(fileheader, path)
 }
 
+// Error send json error
+func (c *Context) Error(code int, message string) {
+	c.Status(code).Json(map[string]any{
+		"error":  message,
+		"status": code,
+	})
+}
+
+// SaveMultipartFile Save MultipartFile
 func SaveMultipartFile(fh *multipart.FileHeader, path string) (err error) {
 	var (
 		f  multipart.File
