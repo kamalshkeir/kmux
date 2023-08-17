@@ -167,14 +167,19 @@ func (c *Context) User(key ...string) (any, bool) {
 	}
 }
 
-// Keys return request context value for given key
-func (c *Context) Keys(contextKey string) (any, bool) {
+// GetKey return request context value for given key
+func (c *Context) GetKey(contextKey string) (any, bool) {
 	v := c.Request.Context().Value(ContextKey(contextKey))
 	if v != nil {
 		return v, true
 	} else {
 		return nil, false
 	}
+}
+
+func (c *Context) SetKey(key string, value any) {
+	ctx := context.WithValue(c.Request.Context(), ContextKey(key), value)
+	c.Request = c.Request.WithContext(ctx)
 }
 
 // Text return text with custom code to the client
