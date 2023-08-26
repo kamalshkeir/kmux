@@ -194,7 +194,7 @@ func (router *Router) createServerCerts(domainName string, subDomains ...string)
 		}
 		tlsConfig := m.TLSConfig()
 		tlsConfig.NextProtos = append([]string{"h2", "http/1.1"}, tlsConfig.NextProtos...)
-		router.initAutoServer(router.Server.Addr, tlsConfig)
+		router.initAutoServer(domainName, tlsConfig)
 		klog.Printfs("grAuto certified domains: %v", uniqueDomains)
 	}
 }
