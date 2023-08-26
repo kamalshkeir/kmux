@@ -166,9 +166,6 @@ func (router *Router) createServerCerts(domainName string, subDomains ...string)
 	// add domainName
 	err := checkDomain(domainName)
 	if err == nil {
-		if !strings.Contains(domainName, ":") {
-			domainName += ":443"
-		}
 		domainsToCertify[domainName] = true
 	}
 	// add pIP
@@ -195,7 +192,7 @@ func (router *Router) createServerCerts(domainName string, subDomains ...string)
 		tlsConfig := m.TLSConfig()
 		tlsConfig.NextProtos = append([]string{"h2", "http/1.1"}, tlsConfig.NextProtos...)
 		router.initAutoServer(domainName, tlsConfig)
-		klog.Printfs("grAuto certified domains: %v", uniqueDomains)
+		klog.Printfs("grAuto certified domains: %v\n", uniqueDomains)
 	}
 }
 
