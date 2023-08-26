@@ -901,9 +901,11 @@ func (router *Router) RunAutoTLS(domainName string, subdomains ...string) {
 
 	// graceful Shutdown server
 	fmt.Println("creating server certs for domain:", DOMAIN, ", subdomains:", SUBDOMAINS)
-	router.createServerCerts(DOMAIN, SUBDOMAINS...)
+	tlsconf := router.createServerCerts(DOMAIN, SUBDOMAINS...)
+	klog.Printf("init auto server addr:%s, port:%s\n", ADDRESS, PORT)
+	router.initAutoServer(DOMAIN, tlsconf)
 	go func() {
-		klog.Printfs("mgrunning on https://%s:%s , subdomains: %v\n", ADDRESS, PORT, SUBDOMAINS)
+		klog.Printfs("mgrunning on https://%s , subdomains: %v\n", router.Server.Addr, SUBDOMAINS)
 		if err := router.Server.ListenAndServe(); err != http.ErrServerClosed {
 			klog.Printf("rdUnable to run the server : %v\n", err)
 		} else {

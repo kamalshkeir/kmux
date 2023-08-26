@@ -160,7 +160,7 @@ func checkDomain(name string) error {
 	return nil
 }
 
-func (router *Router) createServerCerts(domainName string, subDomains ...string) {
+func (router *Router) createServerCerts(domainName string, subDomains ...string) *tls.Config {
 	uniqueDomains := []string{}
 	domainsToCertify := map[string]bool{}
 	// add domainName
@@ -191,10 +191,10 @@ func (router *Router) createServerCerts(domainName string, subDomains ...string)
 		}
 		tlsConfig := m.TLSConfig()
 		tlsConfig.NextProtos = append([]string{"h2", "http/1.1"}, tlsConfig.NextProtos...)
-		klog.Printf("init auto server addr:%s, port:%s\n", ADDRESS, PORT)
-		router.initAutoServer(ADDRESS+":"+PORT, tlsConfig)
 		klog.Printfs("grAuto certified domains: %v\n", uniqueDomains)
+		return tlsConfig
 	}
+	return nil
 }
 
 // initAutoServer init the server with midws with tlsConfig
