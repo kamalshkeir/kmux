@@ -854,7 +854,7 @@ func (router *Router) RunTLS(addr, cert, certKey string) {
 }
 
 // RunAutoTLS HTTPS server generate certificates and handle renew
-func (router *Router) RunAutoTLS(domainName string) {
+func (router *Router) RunAutoTLS(domainName string, subdomains ...string) {
 	if DOMAIN != domainName {
 		if strings.Contains(domainName, ":") {
 			sp := strings.Split(domainName, ":")
@@ -887,10 +887,22 @@ func (router *Router) RunAutoTLS(domainName string) {
 		}
 	}
 
+	for _, d := range subdomains {
+		found := false
+		for _, dd := range SUBDOMAINS {
+			if dd == d {
+				found = true
+			}
+		}
+		if !found {
+			SUBDOMAINS = append(SUBDOMAINS, d)
+		}
+	}
+
 	// graceful Shutdown server
 	router.createServerCerts(DOMAIN, SUBDOMAINS...)
 	go func() {
-		klog.Printfs("mgrunning on https://%s , subdomains: %v\n", DOMAIN, SUBDOMAINS)
+		klog.Printfs("mgrunning on https://%s:%s , subdomains: %v\n", ADDRESS, PORT, SUBDOMAINS)
 		if err := router.Server.ListenAndServe(); err != http.ErrServerClosed {
 			klog.Printf("rdUnable to run the server : %v\n", err)
 		} else {

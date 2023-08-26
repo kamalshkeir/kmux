@@ -2,7 +2,7 @@
 kmux simplifies server setup, route management, and proxy configuration. With kmux, developers can create robust and flexible proxy solutions that are easy to maintain
 # Install
 ```sh
-go get -u github.com/kamalshkeir/kmux@v1.91.10
+go get -u github.com/kamalshkeir/kmux@v1.91.11
 ```
 
 ```go
