@@ -859,7 +859,7 @@ func (router *Router) RunAutoTLS(domainName string) {
 		if strings.Contains(domainName, ":") {
 			sp := strings.Split(domainName, ":")
 			if sp[0] != "" {
-				ADDRESS = domainName
+				ADDRESS = "0.0.0.0"
 				DOMAIN = sp[0]
 				PORT = sp[1]
 				port = ":" + PORT
@@ -873,7 +873,7 @@ func (router *Router) RunAutoTLS(domainName string) {
 				DOMAIN = domainName
 				PORT = "443"
 				port = ":" + PORT
-				ADDRESS = domainName + port
+				ADDRESS = "0.0.0.0"
 			} else {
 				fmt.Println("error: server domainName not valid")
 				return
@@ -892,7 +892,7 @@ func (router *Router) RunAutoTLS(domainName string) {
 	go func() {
 		klog.Printfs("mgrunning on https://%s , subdomains: %v\n", DOMAIN, SUBDOMAINS)
 		if err := router.Server.ListenAndServe(); err != http.ErrServerClosed {
-			klog.Printf("rdUnable to shutdown the server : %v\n", err)
+			klog.Printf("rdUnable to run the server : %v\n", err)
 		} else {
 			klog.Printf("grServer Off !\n")
 		}
