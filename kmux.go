@@ -855,31 +855,32 @@ func (router *Router) RunTLS(addr, cert, certKey string) {
 
 // RunAutoTLS HTTPS server generate certificates and handle renew
 func (router *Router) RunAutoTLS(domainName string, subdomains ...string) {
-	if DOMAIN != domainName {
-		if strings.Contains(domainName, ":") {
-			sp := strings.Split(domainName, ":")
-			if sp[0] != "" {
-				ADDRESS = "0.0.0.0"
-				DOMAIN = sp[0]
-				PORT = sp[1]
-				port = ":" + PORT
-			} else {
-				fmt.Println("error: server domainName not valid")
-				return
-			}
-		} else {
-			err := checkDomain(domainName)
-			if err == nil {
-				DOMAIN = domainName
-				PORT = "443"
-				port = ":" + PORT
-				ADDRESS = domainName
-			} else {
-				fmt.Println("error: server domainName not valid")
-				return
-			}
-		}
-	}
+	// if DOMAIN != domainName {
+	// 	if strings.Contains(domainName, ":") {
+	// 		sp := strings.Split(domainName, ":")
+	// 		if sp[0] != "" {
+	// 			ADDRESS = "0.0.0.0"
+	// 			DOMAIN = sp[0]
+	// 			PORT = sp[1]
+	// 			port = ":" + PORT
+	// 		} else {
+	// 			fmt.Println("error: server domainName not valid")
+	// 			return
+	// 		}
+	// 	} else {
+	// 		err := checkDomain(domainName)
+	// 		if err == nil {
+	// 			DOMAIN = domainName
+	// 			PORT = "443"
+	// 			port = ":" + PORT
+	// 			ADDRESS = domainName
+	// 		} else {
+	// 			fmt.Println("error: server domainName not valid")
+	// 			return
+	// 		}
+	// 	}
+	// }
+	DOMAIN = domainName
 	if proxyUsed {
 		if len(SUBDOMAINS) != proxies.Len() {
 			SUBDOMAINS = proxies.Keys()
@@ -900,9 +901,15 @@ func (router *Router) RunAutoTLS(domainName string, subdomains ...string) {
 
 	// graceful Shutdown server
 	fmt.Println("creating server certs for domain:", DOMAIN, ", subdomains:", SUBDOMAINS)
-	tlsconf := router.createServerCerts(DOMAIN, SUBDOMAINS...)
+	certManager, tlsconf := router.createServerCerts(DOMAIN, SUBDOMAINS...)
+	if certManager == nil || tlsconf == nil {
+		klog.Printf("rdunable to create tls config\n")
+		os.Exit(1)
+		return
+	}
 	klog.Printf("init auto server addr:%s, port:%s\n", ADDRESS, PORT)
 	router.initAutoServer(DOMAIN+":"+PORT, tlsconf)
+	go http.ListenAndServe(":80", certManager.HTTPHandler(nil))
 	go func() {
 		klog.Printfs("mgrunning on https://%s , subdomains: %v\n", router.Server.Addr, SUBDOMAINS)
 		if err := router.Server.ListenAndServe(); err != http.ErrServerClosed {
