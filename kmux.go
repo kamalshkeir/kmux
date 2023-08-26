@@ -908,7 +908,7 @@ func (router *Router) RunAutoTLS(domainName string, subdomains ...string) {
 		return
 	}
 	klog.Printf("init auto server addr:%s, port:%s\n", ADDRESS, PORT)
-	router.initAutoServer(ADDRESS+":"+PORT, tlsconf)
+	router.initAutoServer(DOMAIN, tlsconf)
 	go http.ListenAndServe(":80", certManager.HTTPHandler(nil))
 	go func() {
 		klog.Printfs("mgrunning on https://%s , subdomains: %v\n", router.Server.Addr, SUBDOMAINS)
