@@ -880,7 +880,10 @@ func (router *Router) RunAutoTLS(domainName string, subdomains ...string) {
 	// 		}
 	// 	}
 	// }
-	DOMAIN = domainName
+	if strings.Contains(domainName, ":") {
+		sp := strings.Split(domainName, ":")
+		DOMAIN = sp[0]
+	}
 	if proxyUsed {
 		if len(SUBDOMAINS) != proxies.Len() {
 			SUBDOMAINS = proxies.Keys()

@@ -213,7 +213,7 @@ func (router *Router) initAutoServer(addr string, tlsconf *tls.Config) {
 	}
 	// Setup Server
 	server := http.Server{
-		Addr:         addr,
+		Addr:         ":443",
 		Handler:      h,
 		ReadTimeout:  ReadTimeout,
 		WriteTimeout: WriteTimeout,
