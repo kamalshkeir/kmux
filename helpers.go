@@ -198,7 +198,7 @@ func (router *Router) createServerCerts(domainName string, subDomains ...string)
 }
 
 // initAutoServer init the server with midws with tlsConfig
-func (router *Router) initAutoServer(addr string, tlsconf *tls.Config) {
+func (router *Router) initAutoServer(tlsconf *tls.Config) {
 	var h http.Handler
 	if len(router.middlewares) > 0 {
 		for i := range router.middlewares {
@@ -213,7 +213,7 @@ func (router *Router) initAutoServer(addr string, tlsconf *tls.Config) {
 	}
 	// Setup Server
 	server := http.Server{
-		Addr:         ":443",
+		Addr:         port,
 		Handler:      h,
 		ReadTimeout:  ReadTimeout,
 		WriteTimeout: WriteTimeout,
