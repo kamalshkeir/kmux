@@ -873,7 +873,7 @@ func (router *Router) RunAutoTLS(domainName string, subdomains ...string) {
 				DOMAIN = domainName
 				PORT = "443"
 				port = ":" + PORT
-				ADDRESS = "0.0.0.0"
+				ADDRESS = domainName
 			} else {
 				fmt.Println("error: server domainName not valid")
 				return
@@ -900,6 +900,7 @@ func (router *Router) RunAutoTLS(domainName string, subdomains ...string) {
 	}
 
 	// graceful Shutdown server
+	fmt.Println("creating server certs for domain:", DOMAIN, ", subdomains:", SUBDOMAINS)
 	router.createServerCerts(DOMAIN, SUBDOMAINS...)
 	go func() {
 		klog.Printfs("mgrunning on https://%s:%s , subdomains: %v\n", ADDRESS, PORT, SUBDOMAINS)
