@@ -888,8 +888,6 @@ func (router *Router) RunAutoTLS(domainName string, subdomains ...string) {
 			SUBDOMAINS = append(SUBDOMAINS, d)
 		}
 	}
-	fmt.Println("subdomains:", subdomains)
-	fmt.Println("SUBDOMAINS after add:", SUBDOMAINS)
 	// graceful Shutdown server
 	certManager, tlsconf := router.createServerCerts(DOMAIN, SUBDOMAINS...)
 	if certManager == nil || tlsconf == nil {
