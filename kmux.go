@@ -888,7 +888,8 @@ func (router *Router) RunAutoTLS(domainName string, subdomains ...string) {
 			SUBDOMAINS = append(SUBDOMAINS, d)
 		}
 	}
-
+	fmt.Println("subdomains:", subdomains)
+	fmt.Println("SUBDOMAINS after add:", SUBDOMAINS)
 	// graceful Shutdown server
 	certManager, tlsconf := router.createServerCerts(DOMAIN, SUBDOMAINS...)
 	if certManager == nil || tlsconf == nil {
@@ -899,7 +900,7 @@ func (router *Router) RunAutoTLS(domainName string, subdomains ...string) {
 	router.initAutoServer(tlsconf)
 	go http.ListenAndServe(":80", certManager.HTTPHandler(nil))
 	go func() {
-		klog.Printfs("mgrunning on https://%s , subdomains: %v\n", router.Server.Addr, SUBDOMAINS)
+		klog.Printfs("mgrunning on https://%s , subdomains: %v\n", domainName, SUBDOMAINS)
 		if err := router.Server.ListenAndServeTLS("", ""); err != http.ErrServerClosed {
 			klog.Printf("rdUnable to run the server : %v\n", err)
 		} else {
