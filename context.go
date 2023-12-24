@@ -168,8 +168,8 @@ func (c *Context) User(key ...string) (any, bool) {
 }
 
 // GetKey return request context value for given key
-func (c *Context) GetKey(contextKey string) (any, bool) {
-	v := c.Request.Context().Value(ContextKey(contextKey))
+func (c *Context) GetKey(key string) (any, bool) {
+	v := c.Request.Context().Value(ContextKey(key))
 	if v != nil {
 		return v, true
 	} else {
@@ -391,11 +391,7 @@ func (c *Context) UploadFile(received_filename, folder_out string, acceptedForma
 			if err != nil {
 				return "", nil, err
 			}
-			// make file
-			if len(acceptedFormats) == 0 {
-				acceptedFormats = []string{"jpg", "jpeg", "png", "json"}
-			}
-			if StringContains(f.Filename, acceptedFormats...) {
+			if len(acceptedFormats) == 0 || StringContains(f.Filename, acceptedFormats...) {
 				dst, err := os.Create(MEDIA_DIR + "/" + folder_out + "/" + f.Filename)
 				if err != nil {
 					return "", nil, err
@@ -440,11 +436,7 @@ func (c *Context) UploadFiles(received_filenames []string, folder_out string, ac
 				if err != nil {
 					return nil, nil, err
 				}
-				// make file
-				if len(acceptedFormats) == 0 {
-					acceptedFormats = []string{"jpg", "jpeg", "png", "json"}
-				}
-				if StringContains(f.Filename, acceptedFormats...) {
+				if len(acceptedFormats) == 0 || StringContains(f.Filename, acceptedFormats...) {
 					dst, err := os.Create(MEDIA_DIR + "/" + folder_out + "/" + f.Filename)
 					if err != nil {
 						return nil, nil, err
@@ -457,7 +449,7 @@ func (c *Context) UploadFiles(received_filenames []string, folder_out string, ac
 					datas = append(datas, []byte(data_string))
 				} else {
 					klog.Printf("%s not handled \n", f.Filename)
-					return nil, nil, fmt.Errorf("expecting filename to finish to be %v", acceptedFormats)
+					return nil, nil, fmt.Errorf("file type not supported, accepted extensions: %v", acceptedFormats)
 				}
 			}
 		}

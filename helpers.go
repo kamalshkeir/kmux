@@ -727,7 +727,7 @@ walk: // Outer loop for walking the tree
 						}
 					}
 					origines = n.origines
-					// We need to go deeper!
+					// go deeper
 					if end < len(path) {
 						if len(n.children) > 0 {
 							path = path[end:]
@@ -735,7 +735,7 @@ walk: // Outer loop for walking the tree
 							continue walk
 						}
 
-						// ... but we can't
+						// no deeper
 						tsr = (len(path) == end+1)
 						return
 					}
@@ -760,9 +760,10 @@ walk: // Outer loop for walking the tree
 						// Expand slice within preallocated capacity
 						i := len(*ps)
 						*ps = (*ps)[:i+1]
+
 						(*ps)[i] = Param{
 							Key:   n.path[2:],
-							Value: path,
+							Value: strings.TrimSuffix(strings.TrimPrefix(path, "/"), "/"),
 						}
 					}
 					origines = n.origines
