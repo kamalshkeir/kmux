@@ -413,7 +413,7 @@ func (r *Router) handle(method, path string, handler Handler, wshandler WsHandle
 	return &route
 }
 
-// GetParamsFromCtx get a list of params from path, have 2 methods Get(param)
+// GetParamsFromCtx get a list of params from path
 func GetParamsFromCtx(requestContext context.Context) Params {
 	p, _ := requestContext.Value(ParamsKey).(Params)
 	return p

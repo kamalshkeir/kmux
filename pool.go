@@ -1,7 +1,6 @@
 package kmux
 
 import (
-	"context"
 	"io"
 	"net/http"
 	"sort"
@@ -31,17 +30,10 @@ func (ps Params) Get(name string) string {
 
 var ParamsKey ContextKey
 
-func ParamsFromContext(ctx context.Context) Params {
-	p, _ := ctx.Value(ParamsKey).(Params)
-	return p
-}
-
-var MatchedRoutePathParam = "$matchedRoutePath"
-
 func (r *Router) getPoolParams() *Params {
 	ps, _ := r.paramsPool.Get().(*Params)
 	if ps != nil {
-		*ps = (*ps)[0:0] // reset slice
+		*ps = (*ps)[:0]
 	}
 	return ps
 }
@@ -55,22 +47,14 @@ func (r *Router) putPoolParams(ps *Params) {
 func AdaptPath(p string) string {
 	const stackBufSize = 128
 
-	// Turn empty string into "/"
 	if p == "" {
 		return "/"
 	}
 
-	// Reasonably sized buffer on stack to avoid allocations in the common case.
-	// If a larger buffer is required, it gets allocated dynamically.
 	buf := make([]byte, 0, stackBufSize)
 
 	n := len(p)
 
-	// Invariants:
-	//      reading from path; r is index of next byte to process.
-	//      writing to buf; w is index of next byte to write.
-
-	// path must start with '/'
 	r := 1
 	w := 1
 
@@ -87,15 +71,10 @@ func AdaptPath(p string) string {
 
 	trailing := n > 1 && p[n-1] == '/'
 
-	// A bit more clunky without a 'lazybuf' like the path package, but the loop
-	// gets completely inlined (bufApp calls).
-	// So in contrast to the path package this loop has no expensive function
-	// calls (except make, if needed).
-
 	for r < n {
 		switch {
 		case p[r] == '/':
-			// empty path element, trailing slash is added after the end
+			// slash is added after the end
 			r++
 
 		case p[r] == '.' && r+1 == n:
