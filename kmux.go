@@ -824,6 +824,7 @@ func (router *Router) RunTLS(addr, cert, certKey string) {
 			return
 		}
 	}
+	IsTLS = true
 	// graceful Shutdown server
 	router.initServer(ADDRESS)
 
@@ -871,6 +872,7 @@ func (router *Router) RunAutoTLS(domainName string, subdomains ...string) {
 			port = ":" + PORT
 		}
 	}
+	IsTLS = true
 	if proxyUsed {
 		if len(SUBDOMAINS) != proxies.Len() {
 			SUBDOMAINS = proxies.Keys()

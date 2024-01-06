@@ -11,6 +11,7 @@ var (
 	MEDIA_DIR       = "media"
 	HOST            = ""
 	PORT            = ""
+	IsTLS           = false
 	ADDRESS         = ""
 	DOMAIN          = ""
 	SUBDOMAINS      = []string{}
