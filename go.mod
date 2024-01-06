@@ -14,5 +14,5 @@ require (
 require (
 	github.com/kamalshkeir/kasm v0.0.2 // indirect
 	golang.org/x/net v0.19.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/sys v0.16.0 // indirect
 )
