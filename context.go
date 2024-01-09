@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"text/template"
 
 	"github.com/kamalshkeir/kencoding/json"
 
@@ -19,7 +20,7 @@ import (
 
 // BeforeRenderHtml executed before every html render, you can use reqCtx.Value(key).(type.User) for example and add data to templates globaly
 func BeforeRenderHtml(uniqueName string, fn func(reqCtx context.Context, data *map[string]any)) {
-	beforeRenderHtml[uniqueName] = fn
+	beforeRenderHtml.Set(uniqueName, fn)
 	beforeRenderHtmlSetted = true
 }
 
@@ -117,9 +118,9 @@ func (c *Context) Html(template_name string, data map[string]any) {
 	}
 	data["Request"] = c.Request
 	if beforeRenderHtmlSetted {
-		for _, v := range beforeRenderHtml {
-			v(c.Request.Context(), &data)
-		}
+		beforeRenderHtml.Range(func(key string, value func(reqCtx context.Context, data *map[string]any)) {
+			value(c.Request.Context(), &data)
+		})
 	}
 
 	err := allTemplates.ExecuteTemplate(&buff, template_name, data)
@@ -142,7 +143,62 @@ func (c *Context) Html(template_name string, data map[string]any) {
 	}
 }
 
-// RawHtml render rawTemplate with data using go engine
+// SaveRawHtml save templateRaw as templateName to be able to use it like c.RawHtml
+func SaveRawHtml(templateRaw string, templateName string) {
+	t, err := template.New("raw").Funcs(functions).Parse(templateRaw)
+	if !klog.CheckError(err) {
+		rawTemplates.Set(templateName, t)
+	}
+}
+
+func ExecuteRawHtml(rawTemplateName string, data map[string]any) (string, error) {
+	var buff bytes.Buffer
+	if data == nil {
+		data = make(map[string]any)
+	}
+	t, ok := rawTemplates.Get(rawTemplateName)
+	if !ok {
+		return "", fmt.Errorf("template not registered. Use kmux.SaveRawHtml before using c.RawHtml")
+	}
+	if err := t.Execute(&buff, data); klog.CheckError(err) {
+		return "", err
+	}
+	return buff.String(), nil
+}
+
+// NamedRawHtml render rawTemplateName with data using go engine, make sure to save the html using kmux.SaveRawHtml outside the handler
+func (c *Context) NamedRawHtml(rawTemplateName string, data map[string]any) error {
+	var buff bytes.Buffer
+	if data == nil {
+		data = make(map[string]any)
+	}
+	data["Request"] = c.Request
+	if beforeRenderHtmlSetted {
+		beforeRenderHtml.Range(func(key string, value func(reqCtx context.Context, data *map[string]any)) {
+			value(c.Request.Context(), &data)
+		})
+	}
+	t, ok := rawTemplates.Get(rawTemplateName)
+	if !ok {
+		return fmt.Errorf("template not registered. Use kmux.SaveRawHtml before using c.RawHtml")
+	}
+
+	if err := t.Execute(&buff, data); klog.CheckError(err) {
+		return err
+	}
+	c.SetHeader("Content-Type", "text/html; charset=utf-8")
+	if c.status == 0 {
+		c.status = 200
+	}
+	c.WriteHeader(c.status)
+	_, err := buff.WriteTo(c.ResponseWriter)
+	if klog.CheckError(err) {
+		return err
+	}
+	return nil
+}
+
+// NamedRawHtml render rawTemplateName with data using go engine, make sure to save the html using kmux.SaveRawHtml outside the handler
 func (c *Context) RawHtml(rawTemplate string, data map[string]any) error {
 	var buff bytes.Buffer
 	if data == nil {
@@ -150,19 +206,18 @@ func (c *Context) RawHtml(rawTemplate string, data map[string]any) error {
 	}
 	data["Request"] = c.Request
 	if beforeRenderHtmlSetted {
-		for _, v := range beforeRenderHtml {
-			v(c.Request.Context(), &data)
-		}
+		beforeRenderHtml.Range(func(key string, value func(reqCtx context.Context, data *map[string]any)) {
+			value(c.Request.Context(), &data)
+		})
 	}
-	t, err := rawTemplates.Parse(rawTemplate)
-	if klog.CheckError(err) {
+	t, err := template.New("rawww").Funcs(functions).Parse(rawTemplate)
+	if err != nil {
 		return err
 	}
 
 	if err := t.Execute(&buff, data); klog.CheckError(err) {
 		return err
 	}
-
 	c.SetHeader("Content-Type", "text/html; charset=utf-8")
 	if c.status == 0 {
 		c.status = 200

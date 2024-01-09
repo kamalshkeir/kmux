@@ -4,7 +4,10 @@ import (
 	"context"
 	"embed"
 	"net/http"
+	"text/template"
 	"time"
+
+	"github.com/kamalshkeir/kmap"
 )
 
 var (
@@ -29,7 +32,8 @@ var (
 	}
 	// context
 	MultipartSize          = 10 << 20
-	beforeRenderHtml       = map[string]func(reqCtx context.Context, data *map[string]any){}
+	beforeRenderHtml       = kmap.New[string, func(reqCtx context.Context, data *map[string]any)](false)
+	rawTemplates           = kmap.New[string, *template.Template](false)
 	beforeRenderHtmlSetted = false
 	// docs
 	DocsOutJson           = "."

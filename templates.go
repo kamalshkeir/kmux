@@ -16,8 +16,7 @@ import (
 	"github.com/kamalshkeir/klog"
 )
 
-var allTemplates = template.New("")
-var rawTemplates = template.New("").Funcs(functions)
+var allTemplates = template.New("all_templates")
 
 func (router *Router) LocalStatics(dirPath, webPath string, handlerMiddlewares ...func(handler Handler) Handler) {
 	dirPath = filepath.ToSlash(dirPath)
