@@ -10,8 +10,6 @@ import (
 
 var app = kmux.New()
 
-//var kmu = kmux.New()
-
 func init() {
 	app.Get("/", func(c *kmux.Context) {
 		c.Text("ok")
@@ -25,15 +23,6 @@ func init() {
 	app.Get("/test/:some/:another/:yetanother", func(c *kmux.Context) {
 		c.Text("ok " + c.Param("some") + " " + c.Param("another") + " " + c.Param("yetanother"))
 	})
-	// kmu.GET("/", func(c *kmux.Context) {
-	// 	c.Text("ok")
-	// })
-	// kmu.GET("/test/:some", func(c *kmux.Context) {
-	// 	c.Text("ok " + c.Param("some"))
-	// })
-	// kmu.GET("/test/:some/:another", func(c *kmux.Context) {
-	// 	c.Text("ok " + c.Param("some") + " " + c.Param("another"))
-	// })
 }
 
 func BenchmarkRouter(b *testing.B) {

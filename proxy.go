@@ -49,7 +49,12 @@ func (router *Router) ReverseProxy(host, toURL string) (newRouter *Router) {
 		return
 	}
 	if strings.Contains(host, "*") {
-		klog.Printf("rd%s contain wildcard symbol '*', not allowed\n")
+		klog.Printf("rd%s contain wildcard symbol '*', Not Allowed\n")
+		return
+	}
+
+	if strings.Contains(host, "/") {
+		klog.Printf("rd%s contain slash symbol '/', Not Allowed\n")
 		return
 	}
 	if in := strings.Index(host, ":"); in > -1 {

@@ -17,6 +17,7 @@ import (
 )
 
 var allTemplates = template.New("")
+var rawTemplates = template.New("").Funcs(functions)
 
 func (router *Router) LocalStatics(dirPath, webPath string, handlerMiddlewares ...func(handler Handler) Handler) {
 	dirPath = filepath.ToSlash(dirPath)
@@ -122,7 +123,17 @@ func (router *Router) ServeEmbededFile(file []byte, endpoint, contentType string
 	})
 }
 
-func (router *Router) NewFuncMap(funcName string, function any) {
+func (router *Router) NewFuncMap(funcMap map[string]any) {
+	for k, v := range funcMap {
+		if _, ok := functions[k]; ok {
+			klog.Printf("rdunable to add %s,already exist !\n", k)
+		} else {
+			functions[k] = v
+		}
+	}
+}
+
+func (router *Router) NewTemplateFunc(funcName string, function any) {
 	if _, ok := functions[funcName]; ok {
 		klog.Printf("rdunable to add %s,already exist !\n", funcName)
 	} else {

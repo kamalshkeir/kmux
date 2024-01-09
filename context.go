@@ -89,8 +89,9 @@ func (c *Context) Json(data any) {
 	}
 	c.WriteHeader(c.status)
 	by, err := json.Marshal(data)
-	if err == nil {
-		c.ResponseWriter.Write(by)
+	if !klog.CheckError(err) {
+		_, err = c.ResponseWriter.Write(by)
+		klog.CheckError(err)
 	}
 }
 
@@ -102,8 +103,9 @@ func (c *Context) JsonIndent(data any) {
 	}
 	c.WriteHeader(c.status)
 	by, err := json.MarshalIndent(data, "", " \t")
-	if err == nil {
-		c.ResponseWriter.Write(by)
+	if !klog.CheckError(err) {
+		_, err = c.ResponseWriter.Write(by)
+		klog.CheckError(err)
 	}
 }
 
@@ -134,17 +136,53 @@ func (c *Context) Html(template_name string, data map[string]any) {
 	}
 	c.WriteHeader(c.status)
 
-	_, _ = buff.WriteTo(c.ResponseWriter)
+	_, err = buff.WriteTo(c.ResponseWriter)
+	if klog.CheckError(err) {
+		return
+	}
 }
 
-func (c *Context) IsAuthenticated(key ...ContextKey) bool {
-	var k ContextKey
+// RawHtml render rawTemplate with data using go engine
+func (c *Context) RawHtml(rawTemplate string, data map[string]any) error {
+	var buff bytes.Buffer
+	if data == nil {
+		data = make(map[string]any)
+	}
+	data["Request"] = c.Request
+	if beforeRenderHtmlSetted {
+		for _, v := range beforeRenderHtml {
+			v(c.Request.Context(), &data)
+		}
+	}
+	t, err := rawTemplates.Parse(rawTemplate)
+	if klog.CheckError(err) {
+		return err
+	}
+
+	if err := t.Execute(&buff, data); klog.CheckError(err) {
+		return err
+	}
+
+	c.SetHeader("Content-Type", "text/html; charset=utf-8")
+	if c.status == 0 {
+		c.status = 200
+	}
+	c.WriteHeader(c.status)
+	_, err = buff.WriteTo(c.ResponseWriter)
+	if klog.CheckError(err) {
+		return err
+	}
+	return nil
+}
+
+func (c *Context) IsAuthenticated(key ...string) bool {
+	var k string
 	if len(key) > 0 {
 		k = key[0]
 	} else {
-		k = ContextKey("user")
+		k = "user"
 	}
-	if user := c.Request.Context().Value(k); user != nil {
+	if user, _ := c.GetKey(k); user != nil {
 		return true
 	} else {
 		return false
@@ -153,18 +191,13 @@ func (c *Context) IsAuthenticated(key ...ContextKey) bool {
 
 // User is alias of c.Keys but have key default to 'user'
 func (c *Context) User(key ...string) (any, bool) {
-	var k ContextKey
+	var k string
 	if len(key) > 0 {
-		k = ContextKey(key[0])
+		k = key[0]
 	} else {
-		k = ContextKey("user")
+		k = "user"
 	}
-	user := c.Request.Context().Value(k)
-	if user != nil {
-		return user, true
-	} else {
-		return nil, false
-	}
+	return c.GetKey(k)
 }
 
 // GetKey return request context value for given key
@@ -193,21 +226,11 @@ func (c *Context) Text(body string) {
 	klog.CheckError(err)
 }
 
-func (c *Context) TextHtml(body string) {
-	c.SetHeader("Content-Type", "text/html; charset=utf-8")
-	if c.status == 0 {
-		c.status = 200
-	}
-	c.WriteHeader(c.status)
-	_, err := c.ResponseWriter.Write([]byte(body))
-	klog.CheckError(err)
-}
-
 // Stream send SSE Streaming Response
 func (c *Context) Stream(response string) error {
 	defer c.Flush()
 	_, err := c.ResponseWriter.Write([]byte("data: " + response + "\n\n"))
-	if err != nil {
+	if klog.CheckError(err) {
 		return err
 	}
 	return nil
@@ -244,12 +267,12 @@ func (c *Context) BindBody(strctPointer any, isXML ...bool) error {
 	defer c.Request.Body.Close()
 	if len(isXML) > 0 && isXML[0] {
 		dec := xml.NewDecoder(c.Request.Body)
-		if err := dec.Decode(strctPointer); err != nil {
+		if err := dec.Decode(strctPointer); klog.CheckError(err) {
 			return err
 		}
 	} else {
 		dec := json.NewDecoder(c.Request.Body)
-		if err := dec.Decode(strctPointer); err != nil {
+		if err := dec.Decode(strctPointer); klog.CheckError(err) {
 			return err
 		}
 	}
